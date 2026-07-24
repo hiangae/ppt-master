@@ -700,7 +700,9 @@ def create_app(
             }
             for eid, ann_text in merged.items()
         ]
-
+        
+        content = content.replace('href="../', 'href="./')
+        
         return jsonify({
             'name': name,
             'content': content,

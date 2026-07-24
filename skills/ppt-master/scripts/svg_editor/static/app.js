@@ -231,15 +231,91 @@
             nav_last: "末页 (End)",
             nav_counter: "{current} / {total}",
             nav_empty: "— / —"
-        }
+        },
+        ko: {
+            page_title: "PPT Master - 라이브 미리보기",
+            panel_slides: "슬라이드",
+            panel_annotations: "주석",
+            panel_edit_annotate: "편집 / 주석",
+            placeholder_select_slide: "왼쪽에서 슬라이드를 선택하여 시작하세요",
+            label_selected_element: "선택된 요소",
+            empty_selected_element: "슬라이드에서 요소를 클릭하여 선택하세요",
+            btn_select_group: "상위 그룹 선택",
+            label_batch_edit: "일괄 편집",
+            label_group_edit: "그룹 편집",
+            section_geometry: "위치 / 크기",
+            section_style: "스타일",
+            section_text_style: "텍스트",
+            section_raw_attrs: "원시 속성",
+            label_edit_instruction: "편집 지시사항",
+            pending_none: "적용되지 않은 변경사항이 없습니다",
+            pending_summary: "직접 편집 {edits}건, AI 주석이 있는 페이지 {annotations}개가 미적용 상태입니다",
+            pending_pages: "대상 페이지: {pages}",
+            quick_align: "정렬 / 이동",
+            quick_resize: "크기 조정",
+            quick_replace_image: "이미지 교체",
+            quick_copy: "문구 수정",
+            quick_relayout: "이 영역 재배치",
+            placeholder_annotation: "이 요소를 AI가 어떻게 수정하길 원하는지 설명하세요…",
+            placeholder_annotation_multi: "선택한 {count}개 요소를 어떻게 수정할지 설명하세요…",
+            btn_add_annotation: "주석 추가",
+            label_annotations_on_slide: "이 슬라이드의 주석",
+            btn_submit_annotations: "변경사항 적용",
+            btn_exit_preview: "미리보기 종료",
+            modal_submit: "제출",
+            modal_cancel: "취소",
+            empty_waiting_slides: "슬라이드 생성을 기다리는 중…",
+            empty_no_slides: "슬라이드를 찾을 수 없습니다",
+            placeholder_live_ready: "라이브 미리보기 준비 완료. 생성된 슬라이드가 여기에 표시됩니다.",
+            placeholder_slide_writing: "슬라이드가 아직 작성 중입니다. 다음 업데이트를 기다리는 중…",
+            empty_annotations: "아직 주석이 없습니다",
+            tooltip_remove_annotation: "주석 삭제",
+            multi_selected: "{count}개 요소 선택됨",
+            multi_mixed: "혼합됨",
+            err_load_slides: "슬라이드 목록 불러오기 실패: ",
+            err_load_slide: "슬라이드 불러오기 실패: ",
+            err_add_annotation: "주석 추가 실패: ",
+            err_remove_annotation: "주석 삭제 실패: ",
+            err_save: "저장 실패: ",
+            err_edit: "편집 실패: ",
+            label_direct_edit: "객체 속성 (\"변경사항 적용\"을 누르기 전까지는 보류 상태)",
+            prop_multiline_hint: "여러 줄 텍스트입니다 — 문자를 편집하려면 한 줄(tspan)을 선택하세요",
+            edit_saved_hint: "변경사항이 임시 저장되었습니다. \"변경사항 적용\"을 누르면 svg_output에 기록됩니다.",
+            btn_undo: "실행 취소",
+            undo_done: "가장 최근에 임시 저장된 편집을 취소했습니다",
+            undo_empty: "취소할 편집 내용이 없습니다",
+            overlap_caption: "요소가 겹쳐 있습니다 — 하나를 선택하세요",
+            err_empty_svg: "슬라이드는 로드되었지만 캔버스가 비어 있습니다. SVG가 잘못되었거나 루트 <svg> 요소가 없을 수 있습니다.",
+            warn_icon_inline: "{count}개의 아이콘을 렌더링하지 못했습니다: {names}",
+            warn_matrix_transform: "이 지오메트리 편집은 transform matrix 형태로 저장됩니다. 미리보기는 정확하지만, PPTX로 내보내려면 matrix를 지원하는 최신 익스포터가 필요합니다.",
+            modal_matrix_transform_note: "\n\n참고: 임시 저장된 지오메트리 편집 중 일부는 transform matrix를 사용합니다. matrix가 반영되도록 최신 PPTX 익스포터로 다시 내보내 주세요.",
+            slide_error_tooltip: "이 슬라이드 분석 실패: ",
+            reload_banner: "이 슬라이드가 디스크에서 업데이트되었습니다. 클릭하여 다시 불러오세요.",
+            modal_confirm_submit: "임시 저장된 직접 편집과 AI 주석을 디스크에 기록하시겠습니까?\n\n미리보기 서비스는 계속 실행됩니다. 중지하려면 \"미리보기 종료\"를 누르세요.",
+            modal_success_submit: "변경사항을 svg_output에 저장했습니다.\n\n미리보기 서비스는 계속 실행 중입니다.",
+            modal_success_direct_only: "변경사항을 svg_output에 저장했습니다.\n\n직접 편집 내용은 SVG 소스에 반영되었습니다. PPTX를 업데이트하려면 채팅으로 돌아가 다시 내보내기를 요청하세요. 미리보기 서비스는 계속 실행 중입니다.",
+            modal_success_annotations_only: "주석을 svg_output에 저장했습니다.\n\nAI가 주석을 해석하여 반영하도록 하려면 채팅으로 돌아가 주석 적용을 요청하세요. 미리보기 서비스는 계속 실행 중입니다.",
+            modal_success_mixed: "직접 편집과 주석을 svg_output에 저장했습니다.\n\n채팅으로 돌아가 AI 판단이 필요한 주석 적용을 먼저 요청한 뒤, 확인이 끝나면 PPTX를 다시 내보내세요. 미리보기 서비스는 계속 실행 중입니다.",
+            modal_confirm_exit: "미리보기를 종료하고 로컬 서버를 중지하시겠습니까?\n\n적용되지 않은 편집 내용과 주석은 삭제됩니다.",
+            modal_success_exit: "미리보기를 중지했습니다.\n\n이 탭을 닫고 채팅으로 돌아가셔도 됩니다.",
+            modal_stopping: "미리보기 서버를 중지하는 중…",
+            lang_toggle_title: "언어 전환",
+            nav_first: "첫 슬라이드 (Home)",
+            nav_prev: "이전 슬라이드 (←)",
+            nav_next: "다음 슬라이드 (→)",
+            nav_last: "마지막 슬라이드 (End)",
+            nav_counter: "{current} / {total}",
+            nav_empty: "— / —"
+        },
     };
 
     var LANG = (function () {
         try {
             var stored = window.localStorage.getItem("ppt_lang");
-            if (stored === "zh" || stored === "en" || stored === "ja") return stored;
+            if (stored === "ko" || stored === "zh" || stored === "en" || stored === "ja") return stored;
         } catch (e) { /* ignore */ }
         var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+        if (nav.indexOf("ko") === 0) return "ko";
         if (nav.indexOf("zh") === 0) return "zh";
         if (nav.indexOf("ja") === 0) return "ja";
         return "en";
@@ -273,7 +349,7 @@
         updateNavLabel();
     }
 
-    var LANG_NAMES = { zh: "中文", en: "English", ja: "日本語" };
+    var LANG_NAMES = { ko: "한국어", en: "English", ja: "日本語", zh: "中文" };
 
     function refreshLangUI(lang) {
         // Custom dropdown (OS-independent): button shows the CURRENT language.
@@ -289,7 +365,7 @@
     }
 
     function setLang(lang) {
-        if (lang !== "zh" && lang !== "en" && lang !== "ja") return;
+        if (lang !== "ko" && lang !== "zh" && lang !== "en" && lang !== "ja") return;
         LANG = lang;
         try { window.localStorage.setItem("ppt_lang", lang); } catch (e) { /* ignore */ }
         applyI18n();
@@ -300,7 +376,7 @@
         updateUndoButton();
         updatePendingStatus();
         initAnnotationQuickActions();
-        loadSlides();
+        //loadSlides();
     }
 
     // ---- DOM refs ---------------------------------------------------
@@ -514,7 +590,7 @@
     //  1.  loadSlides  -- GET /api/slides
     // ================================================================
     function loadSlides() {
-        return fetch("/api/slides")
+        return fetch("api/slides")
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 slideListEl.innerHTML = "";
@@ -642,7 +718,7 @@
         // Selecting a slide implicitly dismisses any stale "page updated" banner.
         hideReloadBanner();
 
-        fetch("/api/slide/" + encodeURIComponent(name))
+        fetch("api/slide/" + encodeURIComponent(name))
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 if (name !== currentSlide) return;
@@ -1542,7 +1618,7 @@
 
         var ids = Array.from(selectedElementIds);
         var promises = ids.map(function (eid) {
-            return fetch("/api/slide/" + encodeURIComponent(currentSlide) + "/annotate", {
+            return fetch("api/slide/" + encodeURIComponent(currentSlide) + "/annotate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ element_id: eid, annotation: text })
@@ -1558,7 +1634,7 @@
                 refreshAnnotationVisuals();
                 updateAnnotationList();
                 annotationText.value = "";
-                loadSlides();
+                //loadSlides();
             })
             .catch(function (err) {
                 console.error("addAnnotation:", err);
@@ -1572,7 +1648,7 @@
     function removeAnnotation(elementId) {
         if (!currentSlide) return;
 
-        fetch("/api/slide/" + encodeURIComponent(currentSlide) + "/annotate/" + encodeURIComponent(elementId), {
+        fetch("api/slide/" + encodeURIComponent(currentSlide) + "/annotate/" + encodeURIComponent(elementId), {
             method: "DELETE"
         })
             .then(function (res) { return res.json(); })
@@ -1581,7 +1657,7 @@
                 markAnnotationChanged(currentSlide);
                 refreshAnnotationVisuals();
                 updateAnnotationList();
-                loadSlides();
+                //loadSlides();
             })
             .catch(function (err) {
                 console.error("removeAnnotation:", err);
@@ -1689,7 +1765,7 @@
             modalConfirm.style.display = "none";
             modalCancel.style.display = "none";
             modalMessage.textContent = t("modal_stopping");
-            fetch("/api/shutdown", {
+            fetch("api/shutdown", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ reason: "exit-preview" })
@@ -1712,7 +1788,7 @@
         // Wait for any just-fired direct edits (drag/nudge) to land first, or
         // save-all could race ahead and leave their edits as a fresh pending set.
         drainDirectEdits()
-            .then(function () { return fetch("/api/save-all", { method: "POST" }); })
+            .then(function () { return fetch("api/save-all", { method: "POST" }); })
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 if (data.error) {
@@ -1845,7 +1921,7 @@
     }
 
     function loadConfig() {
-        return fetch("/api/config")
+        return fetch("api/config")
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 liveMode = !!data.live;
@@ -1859,7 +1935,7 @@
         if (!liveMode || slidePollTimer) return;
         slidePollTimer = window.setInterval(function () {
             loadSlides();
-        }, 2000);
+        }, 5000);
     }
 
     // ---- Direct-edit undo + save hint --------------------------------
@@ -1872,7 +1948,7 @@
 
     function runUndo() {
         if (!currentSlide || !editStackCount[currentSlide]) return;
-        fetch("/api/slide/" + encodeURIComponent(currentSlide) + "/undo", { method: "POST" })
+        fetch("api/slide/" + encodeURIComponent(currentSlide) + "/undo", { method: "POST" })
             .then(jsonOrThrow)
             .then(function (data) {
                 if (data.status === "empty") {
@@ -2732,7 +2808,7 @@
         if (payload.text !== undefined) body.text = payload.text;
         if (payload.attrs !== undefined) body.attrs = payload.attrs;
         if (payload.promote_tspan !== undefined) body.promote_tspan = payload.promote_tspan;
-        var p = fetch("/api/slide/" + encodeURIComponent(slide) + "/edit", {
+        var p = fetch("api/slide/" + encodeURIComponent(slide) + "/edit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
