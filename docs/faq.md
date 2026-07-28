@@ -61,6 +61,8 @@ Yes. The full repository is large (Git history plus bundled example decks and th
 
 Either way, run `pip install -r requirements.txt` from the installed location so the post-processing scripts work.
 
+Neither path carries a `.git` directory, so `git describe` cannot report the version. The installed release is recorded in the `metadata.version` field of the skill's own `SKILL.md` frontmatter.
+
 ## Q: Can I use AI-generated images in my presentation?
 
 Yes. PPT Master includes a built-in image generation script that supports multiple providers (Gemini, OpenAI, FLUX, Qwen, Zhipu, etc.). During the Strategist phase, if you choose "AI generation" for the image approach, the pipeline will automatically generate images based on your content. You can also provide your own images — just place them in the project's `images/` folder.
@@ -75,9 +77,9 @@ Be clear on what this buys you: **web search only finds *a* relevant, downloadab
 
 ## Q: Can I edit the generated presentations?
 
-Yes. The only PPTX export route in the SVG pipeline is PPT Master's own `svg_output/` → DrawingML conversion. It saves a timestamped native PowerPoint deck to `exports/`, with text, graphics, and colors directly editable as PowerPoint objects. A copy of `svg_output/` (the Executor's raw SVG source) is always written to `backup/<timestamp>/svg_output/` so you can rebuild via `finalize_svg → svg_to_pptx` without re-running the LLM.
+Yes. The only PPTX converter in the SVG pipeline is PPT Master's own `svg_output/` → DrawingML conversion. It saves a timestamped native PowerPoint deck to `exports/`, with text, graphics, and colors directly editable as PowerPoint objects. In the normal delivery flow, a copy of `svg_output/` (the Executor's raw SVG source) is written to `backup/<timestamp>/svg_output/` so you can rebuild via `finalize_svg → svg_to_pptx` without re-running the LLM.
 
-`finalize_svg.py` remains a mandatory Step 7 operation even though native PPTX export reads `svg_output/`. It produces self-contained files in `svg_final/` for visual inspection and for manual insertion into another deck as SVG pictures. PowerPoint's manual **Convert to Shape** command is not a supported round-trip path; use the generated native PPTX when you need editable shapes.
+`finalize_svg.py` remains a mandatory Step 7 operation in the normal delivery flow even though native PPTX export reads `svg_output/`. It produces self-contained files in `svg_final/` for visual inspection and for manual insertion into another deck as SVG pictures. The explicit quick-test profile skips preview and backup artifacts. PowerPoint's manual **Convert to Shape** command is not a supported round-trip path; use the generated native PPTX when you need editable shapes.
 
 ## Q: Why is one paragraph split into multiple text boxes? Can I get one text box per paragraph instead?
 
@@ -136,13 +138,19 @@ If your workflow specifically requires Excel-driven data editing or PowerPoint's
 
 ## Q: Can I change page transitions and element animations?
 
-Yes. Page transitions are on by default (`fade` 0.4s); per-element entrance animation is **off by default** — a page appears as a whole instead of having elements auto-cascade in one by one (that unsolicited cascade is the strongest "AI deck" tell). Both are controlled by `svg_to_pptx.py` flags — `-t/--transition` for page-level and `-a/--animation` for element-level. Turn element animation on explicitly when you want it:
+Yes. Page transitions are on by default (`fade` 0.4s); per-element object
+animation is **off by default**—a page appears as a whole instead of having
+elements auto-cascade in one by one. Both are controlled by `svg_to_pptx.py`
+flags: `-t/--transition` for page-level and `-a/--animation` for element-level.
+The object registry includes entrance, emphasis, motion-path, and exit effects.
 
 ```bash
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -t push       # different transition
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -t none       # disable transitions
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto       # enable per-element entrance (effect mapped from group id)
-python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation fade        # enable with a single effect
+python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation entrance_fade # enable with one canonical effect
+python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation emphasis_spin # native emphasis
+python3 skills/ppt-master/scripts/pptx_animations.py --list             # complete categorized effect list
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto --animation-trigger on-click   # presenter-paced reveals
 ```
 
@@ -169,7 +177,7 @@ No. PPT Master is a presentation workflow, not a model or a complete agent. It s
 
 If the results you've seen look mediocre, check your setup before concluding anything about the tool: What model? What context size? Was image generation enabled? PPT Master + Claude Opus at 1M context + `gpt-image-2` images is a genuinely different experience from PPT Master + a small open-source model with no image API configured.
 
-> **No Claude access?** Project sponsor [PackyCode](https://www.packyapi.com/register?aff=ppt-master) provides pay-as-you-go access to Claude and other models — no subscription, no overseas card required. Use promo code **`ppt-master`** for 10% off.
+> **No Claude access?** Project sponsor [PackyCode](https://www.packyapi.ai/register?aff=ppt-master) provides pay-as-you-go access to Claude and other models — no subscription, no overseas card required. Use promo code **`ppt-master`** for 10% off.
 
 One last thing: this is a free, solo-maintained open-source project. If it fits your needs, use it — I'm glad it helps; if it doesn't, pick another tool. Sincere feedback and suggestions are always welcome, because that's how the project gets a little better over time.
 
@@ -188,6 +196,19 @@ The cause depends on where the mismatch appears. If the source SVG already overf
 A typical 10–15 page presentation takes about **10–20 minutes** with a fast model. Generation is **intentionally serial** (one page at a time) to maintain visual consistency across slides — parallel generation was tested and produced inconsistent styles.
 
 If generation feels slow, check your model's token throughput. The bottleneck is usually the model's output speed, not the scripts.
+
+## Q: Can I use a fast mode for a few disposable test slides?
+
+Yes. Explicitly say that this is a **quick test** and request a small fixed
+roster of self-contained slides. The Generate route then uses the
+[`quick-test` profile](../skills/ppt-master/workflows/profiles/quick-test.md):
+the agent hand-authors `svg_output/` and runs the test-only direct exporter.
+
+This mode produces only the SVG pages and one PPTX. It skips source conversion,
+research, Strategist/confirmation, templates, asset acquisition, Live Preview,
+quality-report files, notes, `svg_final/`, backup, animation, and narration. It
+is not available for normal delivery, factual/source-backed decks, external
+assets, templates, native charts/tables, or reusable output.
 
 ## Q: Will long decks blow out the context window in one shot?
 

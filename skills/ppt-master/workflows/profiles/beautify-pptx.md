@@ -73,7 +73,7 @@ python3 ${SKILL_DIR}/scripts/pptx_intake.py <project_path>/sources/<source.pptx>
 | Field | Use |
 |---|---|
 | `theme.palette.background` / `text` / `primary` / `accent1..6` | the deck's *declared* colors |
-| `theme.fonts.title` / `body` (`ea` = CJK, `latin`) | the deck's *declared* fonts |
+| `theme.fonts.title` / `body` (`latin` / `ea` / `cs`; `scripts` maps `Hans` / `Hant` / `Jpan` / `Hang` supplemental faces) | the deck's *declared* fonts; use the matching script when `ea` is empty |
 | `theme.sizes.title` / `body` (pt) | the deck's *declared* placeholder sizes (master `txStyles`) — the size a run inherits when it sets no explicit `sz`; `body` is the **level-1** default (coarsest, commonly over-reads) |
 | `theme.sizes.body_levels` (pt list) | the full master `bodyStyle` ramp (lvl1..lvl9, e.g. `[32, 28, 24, 20, …]`) — **reference context** so you can read a deeper level than the over-reading level-1, not an auto-seed |
 | `observed.colors` / `observed.fonts` (`latin` / `ea`, frequency-ranked) | a usage **sample / frequency hint** — run-level fonts + explicit `srgbClr` fills across slides |
@@ -181,7 +181,7 @@ Use the three `<project_path>/confirm_ui/recommendations.stageN.json` files at t
   "communication_intent": { "value": "<open prose inferred from the deck; preserve multiple purposes and their relationship>" },
   "audience_outcome": { "value": "<what the audience should know, understand, decide, or do>" },
   "core_message": { "value": "<the deck-wide claim / ask / action already present in the source>" },
-  "delivery_context": { "value": "<presenter-led / reader-led / hybrid / recorded, plus occasion if inferable>" },
+  "delivery_context": { "value": "<primary presenter-led / reader-led / hybrid / recorded; hybrid names its lead and secondary use; occasion if inferable>" },
   "artifact_afterlife": { "value": "<review / approval / archive / hand-off / reuse / none planned>" },
   "content_divergence": { "value": "keep source wording and page structure verbatim", "locked": true },
   "color": { "selected": 0, "candidates": [

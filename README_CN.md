@@ -13,7 +13,7 @@
 [English](./README.md) | 中文
 
 <details open>
-<summary>本项目由 <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>、<a href="https://www.packyapi.com/register?aff=ppt-master">PackyCode</a>、<a href="https://apikey.fun/register?aff=PPT-MASTER">APIKEY.FUN</a>、<a href="https://runapi.co/register?aff=WMLJ">RunAPI</a>、<a href="https://www.compshare.cn/coding-plan?ytag=GPU_YY-git_pptmaster0624">优云智算</a> 等赞助方支持，得以持续免费开源。</summary>
+<summary>本项目由 <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>、<a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>、<a href="https://apikey.fun/register?aff=PPT-MASTER">APIKEY.FUN</a>、<a href="https://runapi.co/register?aff=WMLJ">RunAPI</a>、<a href="https://www.compshare.cn/coding-plan?ytag=GPU_YY-git_pptmaster0624">优云智算</a> 等赞助方支持，得以持续免费开源。</summary>
 
 <p align="center">
   <a href="https://www.kimi.com/code/?aff=ppt-master"><img src="https://gcdn.moonshot.cn/growth-cdn/sponsor/kimi-zh.png" alt="Kimi" width="100%"></a>
@@ -27,8 +27,8 @@
 
 <table>
   <tr>
-    <td width="180"><a href="https://www.packyapi.com/register?aff=ppt-master"><img src="docs/assets/sponsors/packycode.png" alt="PackyCode" width="150"></a></td>
-    <td>感谢 PackyCode 赞助了本项目！PackyCode 是一家稳定、高效的 API 中转服务商，提供 Claude Code、Codex、Gemini 等多种中转服务。PackyCode 为本项目的用户提供了特别优惠，使用<a href="https://www.packyapi.com/register?aff=ppt-master">此链接</a>注册并在充值时填写"ppt-master"优惠码，可以享受 9 折优惠。</td>
+    <td width="180"><a href="https://www.packyapi.ai/register?aff=ppt-master"><img src="docs/assets/sponsors/packycode.png" alt="PackyCode" width="150"></a></td>
+    <td>感谢 PackyCode 赞助了本项目！PackyCode 是一家稳定、高效的 API 中转服务商，提供 Claude Code、Codex、Gemini 等多种中转服务。PackyCode 为本项目的用户提供了特别优惠，使用<a href="https://www.packyapi.ai/register?aff=ppt-master">此链接</a>注册并在充值时填写"ppt-master"优惠码，可以享受 9 折优惠。</td>
   </tr>
   <tr>
     <td width="180"><a href="https://apikey.fun/register?aff=PPT-MASTER"><img src="docs/assets/sponsors/apikey-fun.png" alt="APIKEY.FUN" width="150"></a></td>
@@ -239,7 +239,7 @@ PPT Master 在**任何具备 agent 能力**（可读写文件、执行命令、�
 
 > **模型推荐**：追求最佳效果，语言模型选 **[Kimi K3](https://www.kimi.com/code/?aff=ppt-master)**（或 Claude）驱动流程，搭配 AI 生图 —— **`gpt-image-2`**（OpenAI）或 **`gemini-3.1-flash-image`**（Google）。本项目赞助商 Kimi Code 支持按量调用，很适合上手。
 
-**🔑 想用 Claude / GPT / Gemini 但还没有渠道？** 本项目赞助商 **[PackyCode](https://www.packyapi.com/register?aff=ppt-master)**、**[APIKEY.FUN](https://apikey.fun/register?aff=PPT-MASTER)** 与 **[RunAPI](https://runapi.co/register?aff=WMLJ)** 均支持按量调用 Claude、GPT、Gemini 等主流模型，无需订阅、支持国内支付，并为本项目用户提供专属优惠（详情见页首）。
+**🔑 想用 Claude / GPT / Gemini 但还没有渠道？** 本项目赞助商 **[PackyCode](https://www.packyapi.ai/register?aff=ppt-master)**、**[APIKEY.FUN](https://apikey.fun/register?aff=PPT-MASTER)** 与 **[RunAPI](https://runapi.co/register?aff=WMLJ)** 均支持按量调用 Claude、GPT、Gemini 等主流模型，无需订阅、支持国内支付，并为本项目用户提供专属优惠（详情见页首）。
 
 **🔀 手上有多个渠道？** 拿到多家的 API Key 后，[cc-switch](https://github.com/farion1231/cc-switch)（跨平台桌面应用）可以一键切换 Claude Code、Codex、Gemini CLI 等工具的 API 供应商，免去手动改配置。
 
@@ -325,7 +325,7 @@ AI：好的，先确认设计规范：
 
 AI 全程处理——内容分析、视觉设计、SVG 生成、PPTX 导出。
 
-> **输出说明：** 标准导出从 `svg_output/` 经项目转换器生成原生 DrawingML `.pptx`，保存至 `exports/<name>_<timestamp>.pptx`；这是唯一的 PPTX 产物路线，文字和图形可直接编辑。`svg_output/` 始终镜像到 `backup/<timestamp>/svg_output/`，便于归档或后续重跑。流程仍会强制生成 `svg_final/`：它是一组自包含的视觉预览 SVG，可直接打开，也可作为 SVG 图片手动插入 PowerPoint；PowerPoint 手工“转换为形状”不在支持范围。图表和表格默认导出为 SVG 派生、可逐形状编辑的 DrawingML 对象，优先保证 PowerPoint / Keynote / WPS 间的视觉一致性；加 `--native-charts-and-tables` 则把符合合同的组替换为带数据源和对象专属编辑能力的 PowerPoint 原生 Chart/Table 对象，跨软件渲染可能略有差异，保存为 `exports/<name>_<timestamp>_native_charts_tables.pptx`。两条路线都可编辑，区别在于 PowerPoint 对象模型，而不是“能否编辑”。
+> **输出说明：** SVG 管线统一由项目转换器读取 `svg_output/`，生成可直接编辑的原生 DrawingML `.pptx`，保存至 `exports/<name>_<timestamp>.pptx`。正式交付流程会生成自包含预览 `svg_final/`，并把 `svg_output/` 镜像到 `backup/<timestamp>/svg_output/`；PowerPoint 手工“转换为形状”不在支持范围。明确用于临时测试的少量自包含页面可改用[快速测试模式](./skills/ppt-master/workflows/profiles/quick-test.md)：只写 SVG 页面和一个 PPTX，不生成规划、预览、讲稿、验证报告或备份。图表和表格默认导出为 SVG 派生、可逐形状编辑的 DrawingML 对象，优先保证 PowerPoint / Keynote / WPS 间的视觉一致性；加 `--native-charts-and-tables` 则把符合合同的组替换为带数据源和对象专属编辑能力的 PowerPoint 原生 Chart/Table 对象，跨软件渲染可能略有差异，保存为 `exports/<name>_<timestamp>_native_charts_tables.pptx`。两条路线都可编辑，区别在于 PowerPoint 对象模型，而不是“能否编辑”。
 
 > **已有一份想复用的 `.pptx`？** 把那份 deck 连同素材给 AI，说「套模板」即可——它会把新内容（文字、表格、图表数据）填进你现有的设计，只导出你挑选的页面，且保持原生可编辑。详见 [常见问题](./docs/zh/faq.md) 与 [套模板工作流](./skills/ppt-master/workflows/template-fill-pptx.md)。
 
@@ -409,7 +409,7 @@ PPT Master 目前主要由我开发维护。每个新模板、Bug 修复、文�
 
 <a href="https://www.kimi.com/code/?aff=ppt-master"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/sponsors/kimi-dark.svg"><img src="docs/assets/sponsors/kimi-light.svg" alt="Kimi" height="40" /></picture></a>
 &nbsp;
-<a href="https://www.packyapi.com/register?aff=ppt-master"><img src="docs/assets/sponsors/packycode.png" alt="PackyCode" height="40" /></a>
+<a href="https://www.packyapi.ai/register?aff=ppt-master"><img src="docs/assets/sponsors/packycode.png" alt="PackyCode" height="40" /></a>
 &nbsp;
 <a href="https://apikey.fun/register?aff=PPT-MASTER"><img src="docs/assets/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="40" /></a>
 &nbsp;

@@ -1,8 +1,9 @@
-"""Animation sidecar loading, SVG target scanning, and validation."""
+"""Motion sidecar loading, SVG target scanning, and validation."""
 
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,13 +12,22 @@ from xml.etree import ElementTree as ET
 
 from pptx_animations import (
     ANIMATIONS,
+    ANIMATION_AFTER_EFFECTS,
     ANIMATION_MODES,
+    ANIMATION_RESTARTS,
+    ANIMATION_TIMING_OPTION_FIELDS,
     ANIMATION_TRIGGERS,
     animation_seconds_to_milliseconds,
     normalize_animation_effect,
+    normalize_animation_effect_options,
+    normalize_animation_effect_request,
     normalize_animation_trigger,
 )
-from pptx_transitions import TRANSITIONS, validate_seconds
+from pptx_transitions import (
+    normalize_transition_effect,
+    normalize_transition_effect_request,
+    validate_seconds,
+)
 
 from .drawingml.utils import SVG_NS
 from .semantic_markers import is_static_page_frame
@@ -43,6 +53,22 @@ class GroupTarget:
     order: int
     chrome: bool = False
     structurally_static: bool = False
+
+
+@dataclass(frozen=True)
+class MorphPair:
+    """One explicit PowerPoint Morph identity across adjacent slides."""
+
+    source_slide: str
+    destination_slide: str
+    key: str
+    source_group_id: str
+    destination_group_id: str
+
+    @property
+    def shape_name(self) -> str:
+        """Return the Selection Pane name PowerPoint uses for forced matching."""
+        return f'!!{self.key}'
 
 
 def _tag_name(elem: ET.Element) -> str:
@@ -178,7 +204,11 @@ def load_animation_config(project_path: Path, config_path: str | None = None) ->
 
 
 def _valid_transition_effect(effect: str) -> bool:
-    return effect == 'none' or effect in TRANSITIONS
+    try:
+        normalize_transition_effect(effect)
+    except ValueError:
+        return False
+    return True
 
 
 def _animation_effect_error(effect: object, label: str) -> str | None:
@@ -193,6 +223,162 @@ def _animation_effect_error(effect: object, label: str) -> str | None:
             f'valid effects: {valid}'
         )
     return None
+
+
+def _animation_parameter_errors(
+    value: dict[str, Any],
+    label: str,
+    *,
+    inherited_effect: object,
+    sound_is_path: bool = True,
+) -> list[str]:
+    """Validate PowerPoint effect/timing parameters shared by all scopes."""
+    errors: list[str] = []
+    effect = value.get('effect', inherited_effect)
+    effect_options = value.get('effect_options')
+    if effect_options is not None and 'effect' not in value:
+        errors.append(
+            f'animations.json {label} effect_options requires an explicit effect'
+        )
+    else:
+        try:
+            normalize_animation_effect_request(
+                effect,
+                effect_options,
+                allow_none=True,
+                allow_modes=True,
+            )
+        except ValueError as exc:
+            errors.append(f'animations.json {label}: {exc}')
+
+    repeat_count = value.get('repeat_count')
+    repeat_duration = value.get('repeat_duration')
+    if repeat_count is not None:
+        if (
+            isinstance(repeat_count, bool)
+            or not isinstance(repeat_count, (int, float))
+            or not math.isfinite(float(repeat_count))
+            or float(repeat_count) <= 0
+            or float(repeat_count) * 1000 > 4_294_967_295
+        ):
+            errors.append(
+                f'animations.json {label} repeat_count must be a positive number: '
+                f'{repeat_count!r}'
+            )
+    if repeat_duration is not None:
+        try:
+            animation_seconds_to_milliseconds(
+                repeat_duration,
+                f'animations.json {label} repeat_duration',
+                allow_zero=False,
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+    if repeat_count is not None and repeat_duration is not None:
+        errors.append(
+            f'animations.json {label} repeat_count and repeat_duration '
+            'are mutually exclusive'
+        )
+
+    for field in ('auto_reverse', 'rewind'):
+        if field in value and not isinstance(value[field], bool):
+            errors.append(
+                f'animations.json {label} {field} must be a boolean: '
+                f'{value[field]!r}'
+            )
+    ratios: dict[str, float] = {}
+    for field in ('accelerate', 'decelerate', 'bounce_end'):
+        if field not in value:
+            continue
+        raw_ratio = value[field]
+        if (
+            isinstance(raw_ratio, bool)
+            or not isinstance(raw_ratio, (int, float))
+            or not math.isfinite(float(raw_ratio))
+            or not 0 <= float(raw_ratio) <= 1
+        ):
+            errors.append(
+                f'animations.json {label} {field} must be between 0 and 1: '
+                f'{raw_ratio!r}'
+            )
+        else:
+            ratios[field] = float(raw_ratio)
+    if ratios.get('accelerate', 0) + ratios.get('decelerate', 0) > 1:
+        errors.append(
+            f'animations.json {label} accelerate + decelerate must not exceed 1'
+        )
+    if ratios.get('bounce_end', 0) and ratios.get('decelerate', 0):
+        errors.append(
+            f'animations.json {label} bounce_end and decelerate are '
+            'mutually exclusive in PowerPoint'
+        )
+
+    if 'restart' in value and value['restart'] not in ANIMATION_RESTARTS:
+        errors.append(
+            f'animations.json {label} restart must be one of '
+            f'{", ".join(ANIMATION_RESTARTS)}: {value["restart"]!r}'
+        )
+
+    if 'after_effect' in value:
+        after_effect = value['after_effect']
+        if isinstance(after_effect, str):
+            after_type = after_effect
+            after_color = None
+        elif isinstance(after_effect, dict):
+            unknown = set(after_effect) - {'type', 'color'}
+            for field in sorted(unknown):
+                errors.append(
+                    f'animations.json {label} after_effect has unknown field: {field}'
+                )
+            after_type = after_effect.get('type', 'none')
+            after_color = after_effect.get('color')
+        else:
+            after_type = None
+            after_color = None
+            errors.append(
+                f'animations.json {label} after_effect must be a string or object'
+            )
+        if after_type is not None and after_type not in ANIMATION_AFTER_EFFECTS:
+            errors.append(
+                f'animations.json {label} after_effect.type must be one of '
+                f'{", ".join(ANIMATION_AFTER_EFFECTS)}: {after_type!r}'
+            )
+        elif after_type == 'dim':
+            if after_color is None:
+                errors.append(
+                    f'animations.json {label} dim after_effect requires color'
+                )
+            else:
+                try:
+                    normalize_animation_effect_options(
+                        'emphasis_change_fill_color',
+                        {'color': after_color},
+                    )
+                except ValueError as exc:
+                    errors.append(f'animations.json {label}: {exc}')
+        elif after_color is not None:
+            errors.append(
+                f'animations.json {label} after_effect.color is valid only '
+                'with type "dim"'
+            )
+
+    if 'sound' in value:
+        sound = value['sound']
+        if sound_is_path and (
+            not isinstance(sound, str) or not sound.strip()
+        ):
+            errors.append(
+                f'animations.json {label} sound must be a non-empty path string'
+            )
+        elif sound_is_path and Path(sound).suffix.lower() not in {
+            '.m4a',
+            '.mp3',
+            '.wav',
+        }:
+            errors.append(
+                f'animations.json {label} sound must use .m4a, .mp3, or .wav'
+            )
+    return errors
 
 
 def _animation_trigger_error(trigger: object, label: str) -> str | None:
@@ -256,6 +442,7 @@ def validate_transition_config(config: dict[str, Any]) -> list[str]:
                 inherited_effect=default_effect,
             )
         )
+        errors.extend(_morph_scope_errors(slide_name, slide_cfg))
     return errors
 
 
@@ -273,20 +460,27 @@ def _transition_scope_errors(
 
     errors = _unknown_field_errors(
         transition,
-        frozenset({'effect', 'duration', 'auto_advance'}),
+        frozenset({'effect', 'effect_options', 'duration', 'auto_advance'}),
         f'{label} transition',
     )
-    if 'effect' in transition:
-        effect = transition['effect']
-        if not isinstance(effect, str):
-            errors.append(
-                f'animations.json {label} transition effect must be a string'
-            )
-        elif not _valid_transition_effect(effect):
-            errors.append(
-                f'animations.json {label} has unknown transition effect: {effect}'
-            )
-    duration_allows_zero = transition.get('effect', inherited_effect) == 'none'
+    effect = transition.get('effect', inherited_effect)
+    effect_options = transition.get('effect_options')
+    if effect_options is not None and 'effect' not in transition:
+        errors.append(
+            f'animations.json {label} transition effect_options requires '
+            'an explicit effect'
+        )
+    else:
+        try:
+            normalize_transition_effect_request(effect, effect_options)
+        except ValueError as exc:
+            errors.append(f'animations.json {label} transition: {exc}')
+    try:
+        duration_allows_zero = (
+            normalize_transition_effect(effect) is None
+        )
+    except ValueError:
+        duration_allows_zero = False
     for field, allow_zero in (
         ('duration', duration_allows_zero),
         ('auto_advance', True),
@@ -302,6 +496,229 @@ def _transition_scope_errors(
         except ValueError as exc:
             errors.append(str(exc))
     return errors
+
+
+def _morph_scope_errors(
+    slide_name: object,
+    slide_cfg: dict[str, Any],
+) -> list[str]:
+    """Validate one destination slide's deterministic Morph declaration."""
+    if 'morph' not in slide_cfg:
+        return []
+    label = f'slide "{slide_name}" morph'
+    morph = slide_cfg['morph']
+    if not isinstance(morph, dict):
+        return [f'animations.json {label} must be an object']
+
+    errors = _unknown_field_errors(
+        morph,
+        frozenset({'from', 'pairs'}),
+        label,
+    )
+    source_slide = morph.get('from')
+    if not isinstance(source_slide, str) or not source_slide.strip():
+        errors.append(
+            f'animations.json {label} field "from" must be a non-empty slide stem'
+        )
+
+    pairs = morph.get('pairs')
+    if not isinstance(pairs, dict) or not pairs:
+        errors.append(
+            f'animations.json {label} field "pairs" must be a non-empty object'
+        )
+    else:
+        source_groups: dict[str, str] = {}
+        destination_groups: dict[str, str] = {}
+        for key, pair in pairs.items():
+            pair_label = f'{label} pair "{key}"'
+            if (
+                not isinstance(key, str)
+                or not key.strip()
+                or key != key.strip()
+                or key.startswith('!!')
+                or any(ord(char) < 32 for char in key)
+            ):
+                errors.append(
+                    f'animations.json {pair_label} key must be a trimmed, '
+                    'non-empty name without the !! prefix or control characters'
+                )
+            if not isinstance(pair, dict):
+                errors.append(f'animations.json {pair_label} must be an object')
+                continue
+            errors.extend(
+                _unknown_field_errors(
+                    pair,
+                    frozenset({'from', 'to'}),
+                    pair_label,
+                )
+            )
+            for field in ('from', 'to'):
+                value = pair.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    errors.append(
+                        f'animations.json {pair_label} field "{field}" must '
+                        'be a non-empty top-level group id'
+                    )
+            source_group = pair.get('from')
+            if isinstance(source_group, str) and source_group.strip():
+                previous = source_groups.setdefault(source_group, str(key))
+                if previous != str(key):
+                    errors.append(
+                        f'animations.json {label} source group '
+                        f'"{source_group}" is assigned to both "{previous}" '
+                        f'and "{key}"'
+                    )
+            destination_group = pair.get('to')
+            if isinstance(destination_group, str) and destination_group.strip():
+                previous = destination_groups.setdefault(
+                    destination_group,
+                    str(key),
+                )
+                if previous != str(key):
+                    errors.append(
+                        f'animations.json {label} destination group '
+                        f'"{destination_group}" is assigned to both "{previous}" '
+                        f'and "{key}"'
+                    )
+
+    transition = slide_cfg.get('transition')
+    if not isinstance(transition, dict) or 'effect' not in transition:
+        errors.append(
+            f'animations.json {label} requires an explicit slide transition '
+            'effect "morph"'
+        )
+    else:
+        try:
+            effect, options = normalize_transition_effect_request(
+                transition.get('effect'),
+                transition.get('effect_options'),
+            )
+        except ValueError:
+            pass
+        else:
+            if effect != 'morph':
+                errors.append(
+                    f'animations.json {label} requires transition effect "morph"'
+                )
+            elif options.get('morph_by', 'object') != 'object':
+                errors.append(
+                    f'animations.json {label} requires Morph by object'
+                )
+    return errors
+
+
+def _resolve_morph_pairs(
+    slide_order: list[str],
+    config: dict[str, Any],
+) -> tuple[list[MorphPair], list[str]]:
+    """Resolve sidecar Morph declarations against the actual slide order."""
+    slides = config.get('slides', {})
+    if not isinstance(slides, dict):
+        return [], ['animations.json field "slides" must be an object']
+
+    order_by_slide = {slide_name: index for index, slide_name in enumerate(slide_order)}
+    pairs: list[MorphPair] = []
+    errors: list[str] = []
+    assignments: dict[str, dict[str, str]] = {}
+    keys: dict[str, dict[str, str]] = {}
+    declared_keys_by_destination: dict[str, set[str]] = {}
+
+    for destination_slide, slide_cfg in slides.items():
+        if not isinstance(slide_cfg, dict) or 'morph' not in slide_cfg:
+            continue
+        scope_errors = _morph_scope_errors(destination_slide, slide_cfg)
+        if scope_errors:
+            errors.extend(scope_errors)
+            continue
+        destination_index = order_by_slide.get(str(destination_slide))
+        if destination_index is None:
+            errors.append(
+                'animations.json morph destination slide is missing: '
+                f'{destination_slide}'
+            )
+            continue
+        if destination_index == 0:
+            errors.append(
+                'animations.json first slide cannot declare an incoming Morph: '
+                f'{destination_slide}'
+            )
+            continue
+
+        morph = slide_cfg['morph']
+        source_slide = str(morph['from'])
+        expected_source = slide_order[destination_index - 1]
+        if source_slide != expected_source:
+            errors.append(
+                f'animations.json slide "{destination_slide}" morph.from must '
+                f'reference the immediately preceding slide "{expected_source}", '
+                f'not "{source_slide}"'
+            )
+            continue
+
+        declared_keys_by_destination[str(destination_slide)] = set(
+            morph['pairs']
+        )
+        for key, pair in morph['pairs'].items():
+            resolved = MorphPair(
+                source_slide=source_slide,
+                destination_slide=str(destination_slide),
+                key=str(key),
+                source_group_id=str(pair['from']),
+                destination_group_id=str(pair['to']),
+            )
+            pair_conflict = False
+            for slide_name, group_id in (
+                (resolved.source_slide, resolved.source_group_id),
+                (resolved.destination_slide, resolved.destination_group_id),
+            ):
+                slide_assignments = assignments.setdefault(slide_name, {})
+                previous_key = slide_assignments.setdefault(group_id, resolved.key)
+                if previous_key != resolved.key:
+                    errors.append(
+                        f'animations.json Morph group "{slide_name}/{group_id}" '
+                        f'is assigned to both "{previous_key}" and "{resolved.key}"'
+                    )
+                    pair_conflict = True
+                slide_keys = keys.setdefault(slide_name, {})
+                previous_group = slide_keys.setdefault(resolved.key, group_id)
+                if previous_group != group_id:
+                    errors.append(
+                        f'animations.json Morph key "{resolved.key}" maps to both '
+                        f'"{slide_name}/{previous_group}" and '
+                        f'"{slide_name}/{group_id}"'
+                    )
+                    pair_conflict = True
+            if not pair_conflict:
+                pairs.append(resolved)
+
+    for destination_slide, declared_keys in declared_keys_by_destination.items():
+        destination_index = order_by_slide[destination_slide]
+        source_slide = slide_order[destination_index - 1]
+        shared_keys = (
+            set(keys.get(source_slide, {}))
+            & set(keys.get(destination_slide, {}))
+        )
+        unexpected_keys = sorted(shared_keys - declared_keys)
+        if unexpected_keys:
+            errors.append(
+                f'animations.json slide "{destination_slide}" Morph would '
+                'force undeclared adjacent key(s): '
+                + ', '.join(f'"{key}"' for key in unexpected_keys)
+            )
+    return pairs, list(dict.fromkeys(errors))
+
+
+def resolve_morph_pairs(
+    slide_order: list[str],
+    config: dict[str, Any] | None,
+) -> tuple[MorphPair, ...]:
+    """Return validated deterministic Morph pairs in authored order."""
+    if not config:
+        return ()
+    pairs, errors = _resolve_morph_pairs(slide_order, config)
+    if errors:
+        raise ValueError('; '.join(errors))
+    return tuple(pairs)
 
 
 def validate_animation_config_errors(config: dict[str, Any]) -> list[str]:
@@ -336,7 +753,7 @@ def validate_animation_config_errors(config: dict[str, Any]) -> list[str]:
         errors.extend(
             _unknown_field_errors(
                 slide_cfg,
-                frozenset({'transition', 'animation', 'groups'}),
+                frozenset({'transition', 'animation', 'groups', 'morph'}),
                 f'slide "{slide_name}"',
             )
         )
@@ -356,7 +773,16 @@ def _animation_scope_errors(scope: dict[str, Any], label: str) -> list[str]:
 
     errors = _unknown_field_errors(
         animation,
-        frozenset({'effect', 'duration', 'stagger', 'trigger'}),
+        frozenset({
+            'effect',
+            'effect_options',
+            'duration',
+            'stagger',
+            'trigger',
+            *ANIMATION_TIMING_OPTION_FIELDS,
+            'after_effect',
+            'sound',
+        }),
         f'{label} animation',
     )
     if 'effect' in animation:
@@ -380,6 +806,13 @@ def _animation_scope_errors(scope: dict[str, Any], label: str) -> list[str]:
         trigger_error = _animation_trigger_error(animation['trigger'], label)
         if trigger_error:
             errors.append(trigger_error)
+    errors.extend(
+        _animation_parameter_errors(
+            animation,
+            f'{label} animation',
+            inherited_effect='auto',
+        )
+    )
     return errors
 
 
@@ -405,7 +838,17 @@ def _animation_group_errors(
         errors.extend(
             _unknown_field_errors(
                 group_cfg,
-                frozenset({'effect', 'duration', 'delay', 'order'}),
+                frozenset({
+                    'effect',
+                    'effect_options',
+                    'duration',
+                    'delay',
+                    'order',
+                    'trigger_shape',
+                    *ANIMATION_TIMING_OPTION_FIELDS,
+                    'after_effect',
+                    'sound',
+                }),
                 label,
             )
         )
@@ -434,6 +877,30 @@ def _animation_group_errors(
                     f'animations.json {label} animation order must be a positive integer: '
                     f'{order!r}'
                 )
+        if 'trigger_shape' in group_cfg:
+            trigger_shape = group_cfg['trigger_shape']
+            if not isinstance(trigger_shape, str) or not trigger_shape.strip():
+                errors.append(
+                    f'animations.json {label} trigger_shape must be a '
+                    f'non-empty group id: {trigger_shape!r}'
+                )
+            elif trigger_shape == str(group_id):
+                errors.append(
+                    f'animations.json {label} trigger_shape must reference '
+                    'a different group'
+                )
+            if group_cfg.get('effect') == 'none':
+                errors.append(
+                    f'animations.json {label} trigger_shape cannot be used '
+                    'with effect "none"'
+                )
+        errors.extend(
+            _animation_parameter_errors(
+                group_cfg,
+                label,
+                inherited_effect='auto',
+            )
+        )
     return errors
 
 
@@ -467,6 +934,14 @@ def validate_animation_config(
         warnings.append(_duplicate_target_error(slide_name, duplicates))
 
     known_slides = set(targets_by_slide)
+    known_groups_by_slide: dict[str, dict[str, GroupTarget]] = {}
+    for slide_name, slide_targets in targets_by_slide.items():
+        ambiguous_ids = set(duplicates_by_slide.get(slide_name, ()))
+        known_groups_by_slide[slide_name] = {
+            target.group_id: target
+            for target in slide_targets
+            if target.group_id not in ambiguous_ids
+        }
     slides = config.get('slides', {})
     if not isinstance(slides, dict):
         return list(dict.fromkeys(warnings))
@@ -483,11 +958,7 @@ def validate_animation_config(
         slide_targets = targets_by_slide.get(slide_name, [])
         duplicate_ids = duplicates_by_slide.get(slide_name, ())
         ambiguous_ids = set(duplicate_ids)
-        known_groups = {
-            target.group_id: target
-            for target in slide_targets
-            if target.group_id not in ambiguous_ids
-        }
+        known_groups = known_groups_by_slide.get(slide_name, {})
         groups = slide_cfg.get('groups', {})
         if not isinstance(groups, dict):
             continue
@@ -504,6 +975,50 @@ def validate_animation_config(
             if target.structurally_static and effect != 'none':
                 warnings.append(
                     'animations.json references non-animatable structural group: '
+                    f'{slide_name}/{group_id}'
+                )
+            if not isinstance(group_cfg, dict):
+                continue
+            trigger_shape = group_cfg.get('trigger_shape')
+            if not isinstance(trigger_shape, str) or not trigger_shape.strip():
+                continue
+            if trigger_shape in ambiguous_ids:
+                warnings.append(
+                    'animations.json trigger_shape references ambiguous group: '
+                    f'{slide_name}/{trigger_shape}'
+                )
+                continue
+            trigger_target = known_groups.get(trigger_shape)
+            if trigger_target is None:
+                warnings.append(
+                    'animations.json trigger_shape references missing group: '
+                    f'{slide_name}/{trigger_shape}'
+                )
+            elif trigger_target.structurally_static:
+                warnings.append(
+                    'animations.json trigger_shape references non-triggerable '
+                    f'structural group: {slide_name}/{trigger_shape}'
+                )
+
+    morph_pairs, morph_errors = _resolve_morph_pairs(
+        list(targets_by_slide),
+        config,
+    )
+    warnings.extend(morph_errors)
+    for pair in morph_pairs:
+        for slide_name, group_id in (
+            (pair.source_slide, pair.source_group_id),
+            (pair.destination_slide, pair.destination_group_id),
+        ):
+            target = known_groups_by_slide.get(slide_name, {}).get(group_id)
+            if target is None:
+                warnings.append(
+                    'animations.json Morph references missing or ambiguous group: '
+                    f'{slide_name}/{group_id}'
+                )
+            elif target.structurally_static:
+                warnings.append(
+                    'animations.json Morph references structural group: '
                     f'{slide_name}/{group_id}'
                 )
     return list(dict.fromkeys(warnings))

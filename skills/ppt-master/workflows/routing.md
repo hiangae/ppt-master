@@ -30,7 +30,7 @@ route selection. After selection, the route authority owns execution.
 
 | Route | Request shape | Authority | Preconditions | Mutation model | Output contract |
 |---|---|---|---|---|---|
-| Generate PPTX | Create a new presentation; regenerate an existing deck visually; use source material or a topic; optionally apply an explicit template workspace | [`generate-pptx`](./generate-pptx.md) | Source facts exist or the topic-research stage can gather them | Author new SVG pages and export a new PPTX | New project with `design_spec.md`, `spec_lock.md`, `svg_output/`, `validation/`, and `exports/` |
+| Generate PPTX | Create a new presentation; regenerate an existing deck visually; use source material or a topic; optionally apply an explicit template workspace | [`generate-pptx`](./generate-pptx.md) | Source facts exist or the topic-research stage can gather them; explicit `quick-test` supplies self-contained test content | Author new SVG pages and export a new PPTX | Default pipeline: project with `design_spec.md`, `spec_lock.md`, `svg_output/`, `validation/`, and `exports/`; explicit `quick-test`: only `svg_output/` plus one PPTX |
 | Create Template | Create a reusable brand/layout/deck template from one or more PPTX/SVG files, images/PDFs, direct or file-based text, documents/websites, brand assets, or a mixed reference bundle | [`create-template`](./create-template.md) | A reusable-template request exists; reference material is optional, and project scope additionally requires an initialized target project | Author a new portable workspace; never modify any reference file in place | Workspace with required `templates/`, optional `images/` / `icons/`, and optional review `exports/` |
 | Fill Native PPTX | Use a raw PPTX's native slide shells and replace/fill content | [`template-fill-pptx`](./template-fill-pptx.md) | Source PPTX plus new material/topic | Clone and patch PPTX through OOXML; no SVG pipeline | New filled PPTX in project `exports/` |
 | Enhance Native PPTX | Keep a finished PPTX's visible slides stable while adding notes, audio, timings, or transitions | [`native-enhance-pptx`](./native-enhance-pptx.md) | Finished source PPTX exists | Append/update scoped OOXML parts; no slide regeneration | New enhanced PPTX in project `exports/` |
@@ -41,21 +41,28 @@ route selection. After selection, the route authority owns execution.
 
 | Request condition | Generate-route behavior |
 |---|---|
+| Explicit disposable test intent + explicit quick/fast mode + small fixed roster of self-contained slides | Activate [`quick-test`](./profiles/quick-test.md) inside Generate PPTX; author SVG pages and run the test-only direct exporter without entering normal Steps 1–7 |
 | Topic only, or supplied sources leave planning-critical factual gaps | Run [`topic-research`](./stages/topic-research.md) inside [`generate-pptx`](./generate-pptx.md) Step 1: immediately for topic-only input, or after conversion and reading for source-backed input; research only the identified gaps, then continue Step 2 |
 | Existing PPTX may be split, merged, dropped, reordered, or re-outlined | Treat the PPTX as source content through [`generate-pptx`](./generate-pptx.md) Step 1 and its PPTX intake; use the default Generate pipeline |
 | Existing PPTX must preserve wording, page count, and page order 1:1 | Activate the [`beautify-pptx`](./profiles/beautify-pptx.md) profile inside the main pipeline |
 | Explicit current brand/layout/deck workspace root | Enter [`generate-pptx`](./generate-pptx.md) Step 3 and conditionally load [`apply-template-workspace`](./stages/apply-template-workspace.md); consume the workspace root, never only its inner `templates/` directory |
 | Split-mode project resumes in a fresh chat | Run [`resume-execute`](./stages/resume-execute.md) inside the active Generate route |
 | Existing generated project needs a deck-wide `colors.*` or universal `typography.font_family` substitution | Stay in Generate; load [`update_spec.py`](../scripts/docs/update_spec.md), honor its supported-key boundary, then rerun the final quality gate and Step 7 export |
-| User explicitly requests spec refinement | Run [`refine-spec`](./stages/refine-spec.md) after Strategist confirmation |
+| User explicitly requests spec refinement | Run [`refine-spec`](./stages/refine-spec.md) after Design Spec Gate 1 and before lock Gate 2 |
 | Data charts exist | Run [`verify-charts`](./stages/verify-charts.md) before export |
 | User explicitly requests visual review | Run [`visual-review`](./stages/visual-review.md) before post-processing |
 | User requests preview, selection, or annotation application | Run [`live-preview`](./stages/live-preview.md) at the stage defined there |
-| User requests page transitions, auto-advance, or deck-wide animation settings | Load [`animations`](../references/animations.md) and apply its export-level contract |
-| User requests per-slide or object-level animation control | Run [`customize-animations`](./stages/customize-animations.md) during post-processing |
+| User requests page transitions, auto-advance, or deck-wide animation settings without page-specific motion planning or an existing `animations.json` | Load [`animations`](../references/animations.md) and apply its export-level contract |
+| Generate `design_spec.md §IX` contains `Motion suggestion`, `<project_path>/animations.json` already exists, or the user requests per-slide or object-level animation control | Run [`customize-animations`](./stages/customize-animations.md) after notes readiness and before Generate Step 7 |
 | Generated project needs narration audio | Run [`generate-audio`](./stages/generate-audio.md) after notes/export readiness |
 
 **Hard rule — profile, not fifth route**: The 1:1 beautify behavior uses the same Strategist → Executor → SVG export lifecycle as Generate PPTX. It changes content/page invariants; it does not define a separate artifact lifecycle.
+
+**Hard rule — test profile, not a release shortcut**: `quick-test` stays inside
+Generate PPTX but owns a test-only SVG → PPTX short circuit. A small page count
+alone never activates it, and any reusable, factual, source-backed,
+template-backed, asset-dependent, or package-behavior request stays on the
+normal Generate pipeline.
 
 ---
 

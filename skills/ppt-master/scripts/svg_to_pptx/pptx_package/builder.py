@@ -21,7 +21,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 
@@ -29,24 +28,34 @@ from pptx import Presentation
 from pptx.util import Emu
 
 from pptx_transitions import (
-    TRANSITIONS,
+    MorphPairExpectation,
+    NATIVE_TRANSITIONS,
     create_transition_xml,
-    normalize_transition_effect,
+    normalize_transition_effect_request,
     set_directory_use_timings,
     validate_generated_transition_xml,
+    validate_pptx_morph_pairs,
     validate_pptx_transition_package,
     validate_seconds,
 )
 from pptx_animations import (
+    ANIMATION_TIMING_OPTION_FIELDS,
     animation_seconds_to_milliseconds,
     create_sequence_timing_xml,
     normalize_animation_effect,
+    normalize_animation_effect_request,
     normalize_animation_trigger,
     pick_animation_effect,
     validate_generated_animation_xml,
     validate_pptx_animation_package,
 )
+from pptx_opc_validation import (
+    canonical_opc_part_path as _canonical_opc_part_path,
+    resolve_internal_opc_target as _resolve_internal_opc_target,
+    verify_internal_relationships,
+)
 
+from ..animation_config import MorphPair, resolve_morph_pairs
 from ..drawingml.converter import convert_svg_to_slide_shapes
 from ..drawingml.theme_colors import (
     ThemeColorSpec,
@@ -493,6 +502,79 @@ def _set_shape_name(elem: ET.Element, name: str) -> None:
     raise TemplateStructureError(
         f"Cannot name structured shape {name!r}: p:cNvPr is missing"
     )
+
+
+def _apply_morph_shape_names(
+    extract_dir: Path,
+    pairs: tuple[MorphPair, ...],
+    slide_numbers: dict[str, int],
+    shape_ids: dict[tuple[str, str], int],
+) -> dict[int, dict[str, str]]:
+    """Write forced-Morph names after all structure transformations finish."""
+    assignments: dict[int, dict[str, tuple[str, str]]] = {}
+    names_by_slide: dict[int, dict[str, str]] = {}
+    for pair in pairs:
+        for slide_name, group_id in (
+            (pair.source_slide, pair.source_group_id),
+            (pair.destination_slide, pair.destination_group_id),
+        ):
+            slide_number = slide_numbers[slide_name]
+            shape_id = str(shape_ids[(slide_name, group_id)])
+            slide_assignments = assignments.setdefault(slide_number, {})
+            previous = slide_assignments.setdefault(
+                shape_id,
+                (pair.shape_name, group_id),
+            )
+            if previous[0] != pair.shape_name:
+                raise RuntimeError(
+                    f'Morph target "{slide_name}/{group_id}" resolves to shape '
+                    f'{shape_id} with conflicting names "{previous[0]}" and '
+                    f'"{pair.shape_name}"'
+                )
+            slide_names = names_by_slide.setdefault(slide_number, {})
+            previous_group = slide_names.setdefault(pair.shape_name, group_id)
+            if previous_group != group_id:
+                raise RuntimeError(
+                    f'Morph name "{pair.shape_name}" maps to multiple objects '
+                    f'on slide "{slide_name}"'
+                )
+
+    trace_names: dict[int, dict[str, str]] = {}
+    for slide_number, slide_assignments in sorted(assignments.items()):
+        slide_path = (
+            extract_dir / "ppt" / "slides" / f"slide{slide_number}.xml"
+        )
+        tree = ET.parse(slide_path)
+        root = tree.getroot()
+        top_level_shapes = _top_level_shapes_by_id(root)
+        desired_names = {
+            shape_name
+            for shape_name, _group_id in slide_assignments.values()
+        }
+        for shape_id, shape in top_level_shapes.items():
+            if shape_id in slide_assignments:
+                continue
+            c_nv_pr = next(shape.iter(f"{{{PML_NS}}}cNvPr"), None)
+            existing_name = (
+                c_nv_pr.get("name") if c_nv_pr is not None else None
+            )
+            if existing_name in desired_names:
+                raise RuntimeError(
+                    f'Morph name "{existing_name}" already belongs to an '
+                    f'unmapped object on slide {slide_number}'
+                )
+
+        for shape_id, (shape_name, group_id) in slide_assignments.items():
+            shape = top_level_shapes.get(shape_id)
+            if shape is None:
+                raise RuntimeError(
+                    f'Morph target "{group_id}" no longer resolves to a '
+                    f'Slide-local shape on slide {slide_number}'
+                )
+            _set_shape_name(shape, shape_name)
+            trace_names.setdefault(slide_number, {})[group_id] = shape_name
+        _write_xml_tree(slide_path, tree)
+    return trace_names
 
 
 def _top_level_shape_name_roster(root: ET.Element) -> tuple[str, ...]:
@@ -3907,21 +3989,32 @@ def _slide_config(animation_config: dict[str, Any] | None, svg_stem: str) -> dic
 def _slide_transition_settings(
     slide_cfg: dict[str, Any],
     transition: str | None,
+    transition_effect_options: dict[str, object] | None,
     duration: float,
     auto_advance: float | None,
     cli_overrides: dict[str, bool],
-) -> tuple[str | None, float, float | None]:
+) -> tuple[str | None, dict[str, object], float, float | None]:
     trans_value = slide_cfg.get('transition', {})
     if not isinstance(trans_value, dict):
         raise ValueError('animations.json slide transition must be an object')
     trans_cfg = trans_value
-    effect = transition
-    if not cli_overrides.get('transition') and 'effect' in trans_cfg:
-        raw_effect = trans_cfg['effect']
-        if not isinstance(raw_effect, str):
-            raise ValueError('animations.json transition effect must be a string')
-        cfg_effect = normalize_transition_effect(raw_effect)
-        effect = cfg_effect
+    effect, effect_options = normalize_transition_effect_request(
+        transition,
+        transition_effect_options,
+    )
+    if not cli_overrides.get('transition'):
+        if 'effect' in trans_cfg:
+            raw_effect = trans_cfg['effect']
+            raw_options = trans_cfg.get('effect_options')
+            effect, effect_options = normalize_transition_effect_request(
+                raw_effect,
+                raw_options,
+            )
+        elif 'effect_options' in trans_cfg:
+            raise ValueError(
+                'animations.json transition effect_options requires '
+                'an explicit effect'
+            )
     if not cli_overrides.get('transition_duration'):
         if 'duration' in trans_cfg:
             duration = validate_seconds(
@@ -3935,48 +4028,69 @@ def _slide_transition_settings(
             "transition auto_advance",
             allow_zero=True,
         )
-    return effect, duration, auto_advance
+    return effect, effect_options, duration, auto_advance
 
 
 def _slide_animation_settings(
     slide_cfg: dict[str, Any],
+    default_animation_cfg: dict[str, Any],
     animation: str | None,
     duration: float,
     stagger: float,
     trigger: str,
     cli_overrides: dict[str, bool],
-) -> tuple[str | None, float, float, str]:
+) -> tuple[str | None, float, float, str, dict[str, Any]]:
     anim_value = slide_cfg.get('animation', {})
     if not isinstance(anim_value, dict):
         raise ValueError('animations.json slide animation must be an object')
     anim_cfg = anim_value
-    effect = normalize_animation_effect(
-        animation,
-        allow_none=True,
-        allow_modes=True,
-    )
-    if not cli_overrides.get('animation') and 'effect' in anim_cfg:
-        effect = normalize_animation_effect(
-            anim_cfg.get('effect'),
+    resolved_cfg = dict(default_animation_cfg)
+    resolved_cfg.update(anim_cfg)
+    if cli_overrides.get('animation'):
+        effect, effect_options = normalize_animation_effect_request(
+            animation,
             allow_none=True,
             allow_modes=True,
         )
+        resolved_cfg['effect'] = effect or 'none'
+        if effect_options:
+            resolved_cfg['effect_options'] = effect_options
+        else:
+            resolved_cfg.pop('effect_options', None)
+    else:
+        raw_effect = resolved_cfg.get('effect', animation)
+        effect, effect_options = normalize_animation_effect_request(
+            raw_effect,
+            resolved_cfg.get('effect_options'),
+            allow_none=True,
+            allow_modes=True,
+        )
+        resolved_cfg['effect'] = effect or 'none'
+        if effect_options:
+            resolved_cfg['effect_options'] = effect_options
+        else:
+            resolved_cfg.pop('effect_options', None)
     if not cli_overrides.get('animation_duration'):
         duration = validate_seconds(
             anim_cfg.get('duration', duration),
             'animation duration',
             allow_zero=False,
         )
+    else:
+        resolved_cfg['duration'] = duration
     if not cli_overrides.get('animation_stagger'):
         stagger = validate_seconds(
             anim_cfg.get('stagger', stagger),
             'animation stagger',
             allow_zero=True,
         )
+    else:
+        resolved_cfg['stagger'] = stagger
     if not cli_overrides.get('animation_trigger') and 'trigger' in anim_cfg:
         trigger = normalize_animation_trigger(anim_cfg.get('trigger'))
     else:
         trigger = normalize_animation_trigger(trigger)
+        resolved_cfg['trigger'] = trigger
     animation_seconds_to_milliseconds(
         duration,
         'animation duration',
@@ -3987,22 +4101,30 @@ def _slide_animation_settings(
         'animation stagger',
         allow_zero=True,
     )
-    return effect, duration, stagger, trigger
+    resolved_cfg['effect'] = effect or 'none'
+    resolved_cfg['duration'] = duration
+    resolved_cfg['stagger'] = stagger
+    resolved_cfg['trigger'] = trigger
+    return effect, duration, stagger, trigger, resolved_cfg
 
 
 def _build_sequence_targets(
     anim_targets: list[tuple[int, str]],
     slide_cfg: dict[str, Any],
     animation: str | None,
+    animation_cfg: dict[str, Any],
     duration: float,
     stagger: float,
     mixed_animation_offset: int,
     animation_rng: random.Random,
-) -> tuple[list[tuple[int, int, str, float]], int]:
+) -> tuple[list[dict[str, Any]], int]:
     groups_value = slide_cfg.get('groups', {})
     if not isinstance(groups_value, dict):
         raise ValueError('animations.json slide groups must be an object')
     groups_cfg = groups_value
+    shape_ids_by_group = {
+        svg_id: sid for sid, svg_id in anim_targets
+    }
     ordered: list[tuple[int, int, str, dict[str, Any]]] = []
     for idx, (sid, svg_id) in enumerate(anim_targets):
         group_value = groups_cfg.get(svg_id, {})
@@ -4033,11 +4155,12 @@ def _build_sequence_targets(
         group_entry = dict(group_cfg)
         group_entry['_shape_id'] = sid
         group_entry['_effect'] = normalized_effect
+        group_entry['_effect_raw'] = raw_effect
         ordered.append((order, idx, svg_id, group_entry))
 
     ordered.sort(key=lambda item: (item[0], item[1]))
 
-    seq_targets: list[tuple[int, int, str, float]] = []
+    seq_targets: list[dict[str, Any]] = []
     resolved_group_modes: list[str | None] = []
     for seq_idx, (_order, _original_idx, _svg_id, group_cfg) in enumerate(ordered):
         shape_id = int(group_cfg['_shape_id'])
@@ -4050,18 +4173,40 @@ def _build_sequence_targets(
                 str(raw_effect), seq_idx, mixed_animation_offset, group_id=_svg_id,
                 rng=animation_rng,
             )
+            effect_options: dict[str, object] = {}
         else:
             effect = str(raw_effect or pick_animation_effect(
                 animation, seq_idx, mixed_animation_offset, group_id=_svg_id,
                 rng=animation_rng,
             ))
+            request_effect = (
+                group_cfg.get('_effect_raw')
+                if group_cfg.get('_effect_raw') is not None
+                else effect
+            )
+            option_value = (
+                group_cfg.get('effect_options')
+                if group_cfg.get('_effect_raw') is not None
+                else animation_cfg.get('effect_options')
+            )
+            effect, effect_options = normalize_animation_effect_request(
+                request_effect,
+                option_value,
+                allow_none=False,
+                allow_modes=False,
+            )
         item_duration = validate_seconds(
             group_cfg.get('duration', duration),
             f'animation duration for group "{_svg_id}"',
             allow_zero=False,
         )
+        default_delay = (
+            0
+            if group_cfg.get('trigger_shape') is not None or seq_idx == 0
+            else stagger
+        )
         delay_seconds = validate_seconds(
-            group_cfg.get('delay', 0 if seq_idx == 0 else stagger),
+            group_cfg.get('delay', default_delay),
             f'animation delay for group "{_svg_id}"',
             allow_zero=True,
         )
@@ -4070,7 +4215,57 @@ def _build_sequence_targets(
             f'animation delay for group "{_svg_id}"',
             allow_zero=True,
         )
-        seq_targets.append((shape_id, delay_ms, effect, item_duration))
+        inherited_fields = {
+            field: animation_cfg[field]
+            for field in (
+                *ANIMATION_TIMING_OPTION_FIELDS,
+                'after_effect',
+                'sound',
+            )
+            if field in animation_cfg
+        }
+        inherited_fields.update(
+            {
+                field: group_cfg[field]
+                for field in (
+                    *ANIMATION_TIMING_OPTION_FIELDS,
+                    'after_effect',
+                    'sound',
+                )
+                if field in group_cfg
+            }
+        )
+        target_entry: dict[str, Any] = {
+            'shape_id': shape_id,
+            'delay_ms': delay_ms,
+            'effect': effect,
+            'effect_options': effect_options,
+            'duration': item_duration,
+        }
+        trigger_shape = group_cfg.get('trigger_shape')
+        if trigger_shape is not None:
+            if not isinstance(trigger_shape, str) or not trigger_shape.strip():
+                raise ValueError(
+                    f'animations.json group "{_svg_id}" trigger_shape must '
+                    'be a non-empty group id'
+                )
+            trigger_shape_id = shape_ids_by_group.get(trigger_shape)
+            if trigger_shape_id is None:
+                raise ValueError(
+                    f'animations.json group "{_svg_id}" trigger_shape '
+                    f'references a missing or non-triggerable group: '
+                    f'{trigger_shape}'
+                )
+            if trigger_shape_id == shape_id:
+                raise ValueError(
+                    f'animations.json group "{_svg_id}" trigger_shape must '
+                    'reference a different group'
+                )
+            target_entry['trigger_shape_id'] = trigger_shape_id
+        target_entry.update(inherited_fields)
+        if 'sound' in target_entry:
+            target_entry['_sound_path'] = target_entry.pop('sound')
+        seq_targets.append(target_entry)
 
     mixed_count = 0
     if animation == 'mixed':
@@ -4078,7 +4273,8 @@ def _build_sequence_targets(
     elif animation == 'auto':
         # 'auto' accumulates a cross-slide offset so the image pool and the
         # unmatched-id fallback rotate as the deck advances. Single-effect
-        # semantic matches (title→fade, chart→wipe etc.) are unaffected
+        # semantic matches (title→entrance_fade, chart→entrance_wipe, etc.)
+        # are unaffected
         # because they ignore the offset.
         mixed_count = len(seq_targets)
     else:
@@ -4088,6 +4284,80 @@ def _build_sequence_targets(
             if mode == 'auto' or (mode == 'mixed' and seq_idx > 0)
         )
     return seq_targets, mixed_count
+
+
+def _next_relationship_id(rel_entries: list[dict[str, str]]) -> str:
+    """Return the next slide relationship id, keeping rId1 for the layout."""
+    used = {1}
+    for rel in rel_entries:
+        match = re.fullmatch(r'rId(\d+)', str(rel.get('id', '')))
+        if match:
+            used.add(int(match.group(1)))
+    candidate = 2
+    while candidate in used:
+        candidate += 1
+    return f'rId{candidate}'
+
+
+def _materialize_animation_sounds(
+    project_path: Path,
+    targets: list[dict[str, Any]],
+    media_files: dict[str, bytes],
+    rel_entries: list[dict[str, str]],
+    audio_exts_used: set[str],
+) -> list[dict[str, Any]]:
+    """Package sidecar sound files and replace paths with OOXML relationships."""
+    materialized: list[dict[str, Any]] = []
+    packaged_by_source: dict[Path, tuple[str, str]] = {}
+    for index, raw_target in enumerate(targets, 1):
+        target = dict(raw_target)
+        raw_sound = target.pop('_sound_path', None)
+        if raw_sound is None:
+            materialized.append(target)
+            continue
+        if not isinstance(raw_sound, str) or not raw_sound.strip():
+            raise ValueError(
+                f'animation target {index} sound must be a non-empty path string'
+            )
+        sound_path = Path(raw_sound)
+        if not sound_path.is_absolute():
+            sound_path = project_path / sound_path
+        sound_path = sound_path.resolve()
+        if not sound_path.is_file():
+            raise ValueError(f'animation sound file not found: {sound_path}')
+        extension = sound_path.suffix.lower()
+        if extension not in AUDIO_CONTENT_TYPES:
+            valid = ', '.join(sorted(AUDIO_CONTENT_TYPES))
+            raise ValueError(
+                f'unsupported animation sound format {extension or "(none)"}; '
+                f'valid formats: {valid}'
+            )
+
+        packaged = packaged_by_source.get(sound_path)
+        if packaged is None:
+            payload = sound_path.read_bytes()
+            digest = hashlib.sha256(payload).hexdigest()[:16]
+            media_name = f'animation_sound_{digest}{extension}'
+            relationship_id = _next_relationship_id(rel_entries)
+            media_files.setdefault(media_name, payload)
+            rel_entries.append(
+                {
+                    'id': relationship_id,
+                    'type': AUDIO_REL_TYPE,
+                    'target': f'../media/{media_name}',
+                }
+            )
+            packaged = (relationship_id, media_name)
+            packaged_by_source[sound_path] = packaged
+            audio_exts_used.add(extension)
+
+        relationship_id, _media_name = packaged
+        target['sound'] = {
+            'relationship_id': relationship_id,
+            'name': sound_path.name,
+        }
+        materialized.append(target)
+    return materialized
 
 
 def _prerender_legacy_pngs(
@@ -4143,133 +4413,6 @@ def _prerender_legacy_pngs(
                 print(f"  [PNG {done}/{len(targets)}] {svg.name} - {tag}")
 
     return results
-
-
-_OPC_UNRESERVED = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
-)
-_ASCII_LOWER_TRANSLATION = str.maketrans(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-    "abcdefghijklmnopqrstuvwxyz",
-)
-
-
-def _canonical_opc_part_path(path: str) -> str | None:
-    """Return an OPC-equivalent package path key, or None when invalid."""
-    if (
-        not path
-        or "\\" in path
-        or path.endswith("/")
-        or "//" in path
-        or any(ord(char) <= 0x20 for char in path)
-    ):
-        return None
-    output: list[str] = []
-    index = 0
-    while index < len(path):
-        char = path[index]
-        if char != "%":
-            output.append(char)
-            index += 1
-            continue
-        if index + 2 >= len(path) or not re.fullmatch(r"[0-9A-Fa-f]{2}", path[index + 1:index + 3]):
-            return None
-        value = int(path[index + 1:index + 3], 16)
-        decoded = chr(value)
-        if value in {0, ord("/"), ord("\\")}:
-            return None
-        output.append(decoded if decoded in _OPC_UNRESERVED else f"%{value:02X}")
-        index += 3
-
-    decoded_path = "".join(output)
-    if decoded_path.rsplit("/", 1)[-1] in {".", ".."}:
-        return None
-    normalized = posixpath.normpath(decoded_path)
-    if (
-        not normalized
-        or normalized in {".", ".."}
-        or normalized.startswith("/")
-        or normalized.startswith("../")
-    ):
-        return None
-    return normalized.translate(_ASCII_LOWER_TRANSLATION)
-
-
-def _source_part_for_rels(rels_path: str) -> str | None:
-    """Return the source part path represented by a relationship sidecar."""
-    filename = posixpath.basename(rels_path)
-    if filename == ".rels" or not filename.endswith(".rels"):
-        return None
-    source_dir = posixpath.dirname(posixpath.dirname(rels_path))
-    source_name = filename[:-len(".rels")]
-    return posixpath.join(source_dir, source_name) if source_dir else source_name
-
-
-def _resolve_internal_opc_target(rels_path: str, target: str) -> str | None:
-    """Resolve one valid internal OPC Target to its canonical package key."""
-    target_path_query = target.split("#", 1)[0]
-    if (
-        "\\" in target
-        or "?" in target_path_query
-        or any(ord(char) <= 0x20 for char in target)
-    ):
-        return None
-    try:
-        parsed = urlsplit(target)
-    except ValueError:
-        return None
-    if parsed.scheme or parsed.netloc or parsed.query:
-        return None
-
-    source_part = _source_part_for_rels(rels_path)
-    if parsed.path.startswith("/"):
-        resolved = parsed.path[1:]
-    elif parsed.path:
-        base_dir = posixpath.dirname(source_part) if source_part else ""
-        resolved = posixpath.join(base_dir, parsed.path) if base_dir else parsed.path
-    elif source_part and "#" in target:
-        resolved = source_part
-    else:
-        return None
-    return _canonical_opc_part_path(resolved)
-
-
-def _verify_internal_rels_targets(extract_dir: Path) -> list[str]:
-    """Return a list of dangling internal Targets across every .rels in the package.
-
-    Each entry is formatted as "<rels-path> -> <missing-target>". An empty list
-    means every internal Target resolves to a real file in the package.
-    """
-    package_parts: set[str] = set()
-    for path in extract_dir.rglob("*"):
-        if not path.is_file():
-            continue
-        key = _canonical_opc_part_path(path.relative_to(extract_dir).as_posix())
-        if key is not None:
-            package_parts.add(key)
-    problems: list[str] = []
-    for rels_path in extract_dir.rglob('*.rels'):
-        rels_rel = rels_path.relative_to(extract_dir).as_posix()
-        try:
-            root = ET.parse(rels_path).getroot()
-        except ET.ParseError as exc:
-            problems.append(f'{rels_rel} -> <invalid relationships XML: {exc}>')
-            continue
-        for elem in root:
-            attrs = _relationship_attrs(elem)
-            if attrs.get('TargetMode', '').lower() == 'external':
-                continue
-            target = attrs.get('Target')
-            if not target:
-                problems.append(f'{rels_rel} -> <missing Target>')
-                continue
-            resolved = _resolve_internal_opc_target(rels_rel, target)
-            if resolved is None:
-                problems.append(f'{rels_rel} -> <invalid Target {target!r}>')
-                continue
-            if resolved not in package_parts:
-                problems.append(f'{rels_rel} -> {resolved}')
-    return problems
 
 
 def _presentation_format(width: float, height: float) -> str:
@@ -4471,6 +4614,8 @@ def create_pptx_with_native_svg(
     baseline_layout_specs: list[TemplateSlideSpec] | None = None,
     layout_definition_files: list[Path] | None = None,
     expected_viewbox: str | None = None,
+    animation_resource_root: Path | None = None,
+    transition_effect_options: dict[str, object] | None = None,
 ) -> bool:
     """Create a PPTX file with native DrawingML shapes.
 
@@ -4483,17 +4628,25 @@ def create_pptx_with_native_svg(
         canvas_format: Canvas format key.
         expected_viewbox: Optional project/template-lock canvas contract. Every
             public page and internal Layout definition must match it.
+        animation_resource_root: Base directory for relative animation sound
+            paths. Defaults to the parent of the SVG source directory.
         verbose: Whether to output detailed information.
         transition: Transition effect name.
+        transition_effect_options: PowerPoint Effect Options for the selected
+            native page transition.
         transition_duration: Transition duration in seconds.
         auto_advance: Auto-advance interval in seconds.
         use_compat_mode: Retained for API compatibility; ignored in native mode.
         notes: Notes dict, key is SVG stem, value is notes content.
         enable_notes: Whether to enable notes embedding.
         use_native_shapes: Must remain true; SVG-image PPTX export is unsupported.
-        animation: Per-element entrance animation mode (single effect name,
-            'mixed', 'random', or None to disable). Native shapes mode only.
-        animation_duration: Per-element entrance duration in seconds.
+        animation: Per-element object-animation mode (compatibility alias,
+            PowerPoint-native ``entrance_*``/``emphasis_*``/``path_*``/
+            ``exit_*`` effect, ``'mixed'``, ``'random'``, or None to disable).
+            Native shapes mode only.
+        animation_duration: Per-element animation duration in seconds.
+            Instantaneous native presets retain their PowerPoint-authored
+            duration.
         animation_stagger: Delay between elements in ``after-previous``
             trigger mode (seconds). Ignored otherwise.
         animation_trigger: PowerPoint Start mode — ``'after-previous'`` (default),
@@ -4543,6 +4696,41 @@ def create_pptx_with_native_svg(
     """
     public_svg_files = list(svg_files)
     definition_svg_files = list(layout_definition_files or [])
+    public_slide_names = [path.stem for path in public_svg_files]
+    morph_pairs = resolve_morph_pairs(
+        public_slide_names,
+        animation_config,
+    )
+    public_slide_numbers = {
+        slide_name: slide_number
+        for slide_number, slide_name in enumerate(public_slide_names, 1)
+    }
+    morph_expectations = tuple(
+        MorphPairExpectation(
+            source_slide_number=public_slide_numbers[pair.source_slide],
+            destination_slide_number=public_slide_numbers[
+                pair.destination_slide
+            ],
+            key=pair.key,
+        )
+        for pair in morph_pairs
+    )
+    morph_pairs_by_destination: dict[str, list[MorphPair]] = {}
+    morph_group_overrides_by_slide: dict[str, set[str]] = {}
+    for pair in morph_pairs:
+        morph_pairs_by_destination.setdefault(
+            pair.destination_slide,
+            [],
+        ).append(pair)
+        morph_group_overrides_by_slide.setdefault(
+            pair.source_slide,
+            set(),
+        ).add(pair.source_group_id)
+        morph_group_overrides_by_slide.setdefault(
+            pair.destination_slide,
+            set(),
+        ).add(pair.destination_group_id)
+    morph_shape_ids: dict[tuple[str, str], int] = {}
     if definition_svg_files and pptx_structure != "structured":
         raise ValueError(
             "layout_definition_files requires pptx_structure='structured'"
@@ -4706,7 +4894,20 @@ def create_pptx_with_native_svg(
         else:
             print(f"  Compatibility mode: Disabled (pure SVG)")
         if transition:
-            trans_name = TRANSITIONS.get(transition, {}).get('name', transition) if TRANSITIONS else transition
+            canonical_transition, _transition_options = (
+                normalize_transition_effect_request(
+                    transition,
+                    transition_effect_options,
+                )
+            )
+            trans_name = (
+                NATIVE_TRANSITIONS.get(canonical_transition, {}).get(
+                    'name',
+                    canonical_transition,
+                )
+                if canonical_transition
+                else transition
+            )
             print(f"  Transition effect: {trans_name}")
         if enable_notes and notes:
             print(f"  Speaker notes: {len(notes)} page(s)")
@@ -4800,6 +5001,14 @@ def create_pptx_with_native_svg(
         audio_exts_used: set[str] = set()
         package_uses_timings = False
         mixed_animation_offset = 0
+        animation_defaults_value = _as_dict(
+            _as_dict(animation_config).get('defaults')
+        ).get('animation', {})
+        if not isinstance(animation_defaults_value, dict):
+            raise ValueError(
+                'animations.json defaults animation must be an object'
+            )
+        default_animation_cfg = animation_defaults_value
         animation_seed = json.dumps(
             {
                 'animation': animation,
@@ -4827,7 +5036,7 @@ def create_pptx_with_native_svg(
                 if is_layout_definition
                 else f"[Slide {slide_num}/{public_slide_count}]"
             )
-            expected_animation_targets: list[tuple[int, int, str, float]] = []
+            expected_animation_targets: list[dict[str, Any]] = []
             expected_animation_duration = animation_duration
             expected_animation_trigger = normalize_animation_trigger(animation_trigger)
 
@@ -4841,20 +5050,24 @@ def create_pptx_with_native_svg(
                     )
                     if is_layout_definition:
                         slide_transition = None
+                        slide_transition_effect_options = {}
                         slide_transition_duration = transition_duration
                         slide_auto_advance = None
                         slide_animation = None
                         slide_animation_duration = animation_duration
                         slide_animation_stagger = animation_stagger
                         slide_animation_trigger = animation_trigger
+                        slide_animation_cfg = {}
                     else:
                         (
                             slide_transition,
+                            slide_transition_effect_options,
                             slide_transition_duration,
                             slide_auto_advance,
                         ) = _slide_transition_settings(
                             slide_cfg,
                             transition,
+                            transition_effect_options,
                             transition_duration,
                             auto_advance,
                             animation_cli_overrides,
@@ -4864,14 +5077,30 @@ def create_pptx_with_native_svg(
                             slide_animation_duration,
                             slide_animation_stagger,
                             slide_animation_trigger,
+                            slide_animation_cfg,
                         ) = _slide_animation_settings(
                             slide_cfg,
+                            default_animation_cfg,
                             animation,
                             animation_duration,
                             animation_stagger,
                             animation_trigger,
                             animation_cli_overrides,
                         )
+                        if morph_pairs_by_destination.get(svg_path.stem):
+                            if (
+                                slide_transition != "morph"
+                                or slide_transition_effect_options.get(
+                                    "morph_by",
+                                    "object",
+                                )
+                                != "object"
+                            ):
+                                raise ValueError(
+                                    f'animations.json slide "{svg_path.stem}" '
+                                    'declares deterministic Morph pairs, but '
+                                    'the resolved transition is not Morph by object'
+                                )
                     groups_value = slide_cfg.get('groups', {})
                     if not isinstance(groups_value, dict):
                         raise ValueError(
@@ -4882,7 +5111,7 @@ def create_pptx_with_native_svg(
                         and animation is None
                     )
                     explicit_animation_groups = (
-                        frozenset(
+                        frozenset({
                             str(group_id)
                             for group_id, group_cfg in groups_value.items()
                             if isinstance(group_cfg, dict)
@@ -4891,9 +5120,24 @@ def create_pptx_with_native_svg(
                                 slide_animation is not None
                                 or 'effect' in group_cfg
                             )
-                        )
+                        } | {
+                            group_cfg['trigger_shape']
+                            for group_cfg in groups_value.values()
+                            if isinstance(group_cfg, dict)
+                            and isinstance(group_cfg.get('trigger_shape'), str)
+                            and group_cfg['trigger_shape'].strip()
+                        })
                         if not animation_hard_disabled
                         else frozenset()
+                    )
+                    converter_group_overrides = (
+                        explicit_animation_groups
+                        | frozenset(
+                            morph_group_overrides_by_slide.get(
+                                svg_path.stem,
+                                set(),
+                            )
+                        )
                     )
                     (
                         slide_xml,
@@ -4912,7 +5156,7 @@ def create_pptx_with_native_svg(
                             image_scale=image_scale,
                             image_quality=image_quality,
                             native_objects=native_objects,
-                            animation_group_overrides=explicit_animation_groups,
+                            animation_group_overrides=converter_group_overrides,
                             theme_font_spec=active_theme_font_spec,
                             theme_color_spec=active_theme_color_spec,
                             promote_background=pptx_structure != "structured",
@@ -4921,6 +5165,31 @@ def create_pptx_with_native_svg(
                             else structure_trace,
                         )
                     )
+                    morph_group_ids = morph_group_overrides_by_slide.get(
+                        svg_path.stem,
+                        set(),
+                    )
+                    if morph_group_ids:
+                        target_ids_by_group: dict[str, list[int]] = {}
+                        for shape_id, group_id in anim_targets:
+                            target_ids_by_group.setdefault(
+                                str(group_id),
+                                [],
+                            ).append(int(shape_id))
+                        for group_id in sorted(morph_group_ids):
+                            resolved_shape_ids = target_ids_by_group.get(
+                                group_id,
+                                [],
+                            )
+                            if len(resolved_shape_ids) != 1:
+                                raise ValueError(
+                                    f'Morph target "{svg_path.stem}/{group_id}" '
+                                    'must resolve to exactly one Slide-local '
+                                    'PowerPoint shape'
+                                )
+                            morph_shape_ids[
+                                (svg_path.stem, group_id)
+                            ] = resolved_shape_ids[0]
                     # Order matters: OOXML schema requires <p:transition>
                     # to precede <p:timing> inside <p:sld>. Both use the same
                     # </p:sld> string-replace anchor, so transition must be
@@ -4930,6 +5199,7 @@ def create_pptx_with_native_svg(
                             effect=slide_transition,
                             duration=slide_transition_duration,
                             advance_after=slide_auto_advance,
+                            effect_options=slide_transition_effect_options,
                         )
                         if transition_fragment:
                             slide_xml = slide_xml.replace(
@@ -4950,10 +5220,22 @@ def create_pptx_with_native_svg(
                             anim_targets,
                             slide_cfg,
                             slide_animation,
+                            slide_animation_cfg,
                             slide_animation_duration,
                             slide_animation_stagger,
                             mixed_animation_offset,
                             animation_rng,
+                        )
+                        seq_targets = _materialize_animation_sounds(
+                            (
+                                animation_resource_root
+                                if animation_resource_root is not None
+                                else svg_files[0].parent.parent
+                            ),
+                            seq_targets,
+                            media_files_dict,
+                            rel_entries,
+                            audio_exts_used,
                         )
                         expected_animation_targets = seq_targets
                         if mixed_count:
@@ -4981,7 +5263,12 @@ def create_pptx_with_native_svg(
                         cached_name = media_cache.get(cache_key)
 
                         if cached_name is None:
-                            cached_name = f'image_{media_hash[:16]}.{ext}'
+                            prefix = (
+                                'audio'
+                                if f'.{ext}' in AUDIO_CONTENT_TYPES
+                                else 'image'
+                            )
+                            cached_name = f'{prefix}_{media_hash[:16]}.{ext}'
                             media_cache[cache_key] = cached_name
                             with open(media_dir / cached_name, 'wb') as f:
                                 f.write(media_data)
@@ -5042,17 +5329,27 @@ def create_pptx_with_native_svg(
                     # Track image formats for Content_Types
                     for media_name in media_name_map.values():
                         ext = media_name.rsplit('.', 1)[-1].lower()
-                        _content_type_for_extension(ext)
-                        image_exts_used.add(ext)
-                        has_any_image = True
+                        dotted_ext = f'.{ext}'
+                        if dotted_ext in AUDIO_CONTENT_TYPES:
+                            audio_exts_used.add(dotted_ext)
+                        else:
+                            _content_type_for_extension(ext)
+                            image_exts_used.add(ext)
+                            has_any_image = True
 
                 # ---- Legacy SVG embedding mode ----
                 else:
                     slide_cfg = _slide_config(animation_config, svg_path.stem)
-                    slide_transition, slide_transition_duration, slide_auto_advance = (
+                    (
+                        slide_transition,
+                        slide_transition_effect_options,
+                        slide_transition_duration,
+                        slide_auto_advance,
+                    ) = (
                         _slide_transition_settings(
                             slide_cfg,
                             transition,
+                            transition_effect_options,
                             transition_duration,
                             auto_advance,
                             animation_cli_overrides,
@@ -5093,6 +5390,7 @@ def create_pptx_with_native_svg(
                         png_rid=png_rid, svg_rid=svg_rid,
                         width_emu=width_emu, height_emu=height_emu,
                         transition=slide_transition,
+                        transition_effect_options=slide_transition_effect_options,
                         transition_duration=slide_transition_duration,
                         auto_advance=slide_auto_advance,
                         use_compat_mode=(use_compat_mode and slide_has_png),
@@ -5219,6 +5517,7 @@ def create_pptx_with_native_svg(
                     resolved_motion = validate_generated_transition_xml(
                         final_slide_xml,
                         effect=slide_transition,
+                        effect_options=slide_transition_effect_options,
                         duration=slide_transition_duration,
                         advance_on_click=resolved_advance_on_click,
                         advance_after=resolved_advance_after,
@@ -5431,6 +5730,27 @@ def create_pptx_with_native_svg(
                     f"{pruned_payload_parts} orphan payload part(s)"
                 )
 
+        morph_trace_names = _apply_morph_shape_names(
+            extract_dir,
+            morph_pairs,
+            public_slide_numbers,
+            morph_shape_ids,
+        )
+        if template_shape_roster_expectations is not None:
+            for slide_number in morph_trace_names:
+                slide_part = f"ppt/slides/slide{slide_number}.xml"
+                template_shape_roster_expectations[
+                    slide_part
+                ] = _top_level_shape_name_roster(
+                    ET.parse(extract_dir / slide_part).getroot()
+                )
+        if conversion_trace is not None:
+            for trace_entry in conversion_trace:
+                slide_number = int(trace_entry.get("slide_num", 0))
+                names = morph_trace_names.get(slide_number)
+                if names:
+                    trace_entry["morph_names"] = dict(sorted(names.items()))
+
         # Update [Content_Types].xml
         content_types_path = extract_dir / '[Content_Types].xml'
         with open(content_types_path, 'r', encoding='utf-8') as f:
@@ -5459,7 +5779,11 @@ def create_pptx_with_native_svg(
             for ext in sorted(audio_exts_used):
                 content_type = AUDIO_CONTENT_TYPES.get(ext)
                 if content_type:
-                    content_types = _add_default_content_type(content_types, ext, content_type)
+                    content_types = _add_default_content_type(
+                        content_types,
+                        ext.removeprefix('.'),
+                        content_type,
+                    )
             if 'Extension="png"' not in content_types:
                 content_types = _add_default_content_type(content_types, 'png', 'image/png')
             with open(content_types_path, 'w', encoding='utf-8') as f:
@@ -5498,7 +5822,7 @@ def create_pptx_with_native_svg(
         if package_uses_timings:
             set_directory_use_timings(extract_dir)
 
-        rels_problems = _verify_internal_rels_targets(extract_dir)
+        rels_problems = verify_internal_relationships(extract_dir)
         if rels_problems:
             details = '\n'.join(f'  - {p}' for p in rels_problems)
             raise RuntimeError(
@@ -5551,6 +5875,15 @@ def create_pptx_with_native_svg(
         except ValueError as exc:
             raise RuntimeError(
                 f'PPTX transition package validation failed: {exc}'
+            ) from exc
+        try:
+            validate_pptx_morph_pairs(
+                temp_output_path,
+                morph_expectations,
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                f'PPTX Morph package validation failed: {exc}'
             ) from exc
         try:
             validate_pptx_animation_package(

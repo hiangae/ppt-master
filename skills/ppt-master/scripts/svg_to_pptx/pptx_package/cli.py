@@ -27,7 +27,12 @@ from pptx_animations import (  # noqa: E402
     normalize_animation_effect,
     normalize_animation_trigger,
 )
-from pptx_transitions import validate_seconds  # noqa: E402
+from pptx_transitions import (  # noqa: E402
+    LEGACY_TRANSITION_KEYS,
+    NATIVE_TRANSITION_KEYS,
+    normalize_transition_effect_request,
+    validate_seconds,
+)
 
 configure_utf8_stdio()
 
@@ -54,8 +59,8 @@ from ..drawingml.theme_fonts import (
     load_master_text_style_spec,
     load_theme_font_spec,
 )
+from ..drawingml.utils import unsafe_exported_font_faces
 from .narration import NARRATION_EXTENSIONS, find_narration_files, probe_audio_duration
-from .slide_xml import TRANSITIONS
 from .template_structure import (
     TemplateStructureError,
     load_pptx_structure_lock,
@@ -207,11 +212,21 @@ def _source_resource_audit(svg_files: list[Path]) -> dict[str, object]:
         for stack in font_stacks
         if _font_stack_is_generic_only(stack)
     })
+    unsafe_font_faces = [
+        {
+            'stack': stack,
+            'role': role,
+            'typeface': typeface,
+        }
+        for stack in sorted(font_stacks)
+        for role, typeface in unsafe_exported_font_faces(stack).items()
+    ]
     return {
         'unresolved_template_tokens': placeholders,
         'fonts': {
             'stacks': sorted(font_stacks),
             'generic_only_stacks': generic_only_font_stacks,
+            'unsafe_exported_faces': unsafe_font_faces,
         },
         'images': {
             **image_counts,
@@ -294,6 +309,7 @@ def _postflight_warning_summaries(
     unresolved_token_count: int,
     external_image_count: int,
     generic_font_stack_count: int,
+    unsafe_font_face_count: int,
 ) -> tuple[str, ...]:
     """Return stable warning summaries for the terminal receipt."""
     warnings: list[str] = []
@@ -307,6 +323,8 @@ def _postflight_warning_summaries(
         warnings.append(f'external_images={external_image_count}')
     if generic_font_stack_count:
         warnings.append(f'generic_only_font_stacks={generic_font_stack_count}')
+    if unsafe_font_face_count:
+        warnings.append(f'unsafe_exported_font_faces={unsafe_font_face_count}')
     return tuple(warnings)
 
 
@@ -366,12 +384,14 @@ def _write_postflight_report(
     unresolved_tokens = source_audit['unresolved_template_tokens']
     external_image_count = source_audit['images']['external']
     generic_only_font_stacks = source_audit['fonts']['generic_only_stacks']
+    unsafe_font_faces = source_audit['fonts']['unsafe_exported_faces']
     if quality_gate == 'failed':
         report_status = 'failed'
     elif (
         not unresolved_tokens
         and not external_image_count
         and not generic_only_font_stacks
+        and not unsafe_font_faces
         and not introduced_warning_count
         and quality_gate == 'passed'
     ):
@@ -416,7 +436,9 @@ def _write_postflight_report(
                 'passed' if not external_image_count else 'warning'
             ),
             'font_portability': (
-                'passed' if not generic_only_font_stacks else 'warning'
+                'passed'
+                if not generic_only_font_stacks and not unsafe_font_faces
+                else 'warning'
             ),
         },
         'quality': quality,
@@ -439,6 +461,7 @@ def _write_postflight_report(
         unresolved_token_count=len(unresolved_tokens),
         external_image_count=external_image_count,
         generic_font_stack_count=len(generic_only_font_stacks),
+        unsafe_font_face_count=len(unsafe_font_faces),
     )
     return _PostflightReceipt(
         output_path=output_path,
@@ -463,6 +486,30 @@ def _print_postflight_receipt(receipt: _PostflightReceipt) -> None:
         print(f'  [POSTFLIGHT][WARNING] {warning}')
     print(f'  [PPTX] {receipt.output_path}')
     print(f'  [REPORT] {receipt.report_path}')
+
+
+def _validate_quick_test_output(
+    output_path: Path,
+    *,
+    expected_slide_count: int,
+) -> dict[str, object]:
+    """Validate a quick-test PPTX without writing a report sidecar."""
+    try:
+        package = _package_part_counts(output_path)
+    except (OSError, zipfile.BadZipFile) as exc:
+        raise PptxPostflightValidationError(
+            f"quick-test PPTX is not a readable ZIP package: {exc}"
+        ) from exc
+    if package['zip_integrity'] != 'passed':
+        raise PptxPostflightValidationError(
+            f"quick-test PPTX ZIP integrity failed at {package['corrupt_member']}"
+        )
+    if package['slides'] != expected_slide_count:
+        raise PptxPostflightValidationError(
+            "Quick-test Slide count does not match authored SVG count: "
+            f"{package['slides']} != {expected_slide_count}"
+        )
+    return package
 
 
 def _declared_pptx_structure_mode(project_path: Path) -> str | None:
@@ -620,6 +667,22 @@ def _recorded_narration_on_click_slides(
         )
         if slide_animation is None and not has_explicit_animation:
             continue
+        has_interactive_animation = any(
+            isinstance(group_cfg, dict)
+            and isinstance(group_cfg.get('trigger_shape'), str)
+            and bool(group_cfg['trigger_shape'].strip())
+            and (
+                (
+                    'effect' in group_cfg
+                    and normalize_animation_effect(group_cfg.get('effect')) is not None
+                )
+                or ('effect' not in group_cfg and slide_animation is not None)
+            )
+            for group_cfg in groups_cfg.values()
+        )
+        if has_interactive_animation:
+            blocked.append(svg_path.stem)
+            continue
 
         slide_trigger = animation_trigger
         if not animation_cli_overrides.get('animation_trigger') and anim_cfg.get('trigger'):
@@ -631,10 +694,11 @@ def _recorded_narration_on_click_slides(
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for the SVG to PPTX conversion tool."""
-    transition_choices = (
-        ['none'] + (list(TRANSITIONS.keys()) if TRANSITIONS
-                    else ['fade', 'push', 'wipe', 'split', 'strips', 'cover', 'random'])
-    )
+    transition_choices = [
+        'none',
+        *NATIVE_TRANSITION_KEYS,
+        *LEGACY_TRANSITION_KEYS,
+    ]
 
     animation_choices = ['none', *ANIMATIONS, 'auto', 'mixed', 'random']
 
@@ -645,6 +709,7 @@ def main(argv: list[str] | None = None) -> int:
 Examples:
     %(prog)s examples/ppt169_demo                         # Default: native pptx -> exports/, svg_output -> backup/<ts>/
     %(prog)s examples/ppt169_demo -o out.pptx            # Explicit path (no backup/)
+    %(prog)s projects/_smoke_quick --quick-test           # Test-only: svg_output/ -> PPTX, no sidecars
 
     # Disable transition / change transition effect
     %(prog)s examples/ppt169_demo -t none
@@ -657,24 +722,32 @@ SVG source directory (-s):
     Omit -s to use the default: native export reads svg_output.
 
 Transition effects (-t/--transition):
-    {', '.join(transition_choices)}
+    New selections use the 48 PowerPoint-native gallery keys. The 8 old
+    names remain accepted only as compatibility inputs. Run
+    scripts/pptx_animations.py --list for the categorized registry and
+    --describe-transition <effect> for its Effect Options.
 
-Per-element entrance animation (-a/--animation, native shapes mode):
-    {', '.join(animation_choices)}
+Per-element object animation (-a/--animation, native shapes mode):
+    Use PowerPoint-native entrance_*, emphasis_*, path_*, and exit_* keys for
+    new animation choices. The 29 old short names remain accepted only as
+    compatibility inputs. Run scripts/pptx_animations.py --list for the
+    complete categorized 232-key input registry.
     Notes: applied to top-level <g id="..."> SVG groups in z-order. Default is
            "none" (no auto element builds; page transitions still apply). Use
-           "-a auto" to map effects from group id: chart→wipe,
-           card-/step-/pillar-→fly, title/takeaway→fade; image-like ids
-           hero/figure-/image/img-/kpi cycle zoom/dissolve/circle/box/diamond/
-           wheel so multiple images vary across the deck; unmatched ids cycle
-           fade/wipe/fly/zoom. Start mode set by --animation-trigger, matching
+           "-a auto" to map effects from group id: chart→entrance_wipe,
+           card-/step-/pillar-→entrance_fly,
+           title/takeaway→entrance_fade; image-like ids
+           hero/figure-/image/img-/kpi cycle canonical entrance presets;
+           unmatched ids cycle entrance_fade/entrance_wipe/entrance_fly/
+           entrance_zoom. Start mode set by --animation-trigger, matching
            PowerPoint's Start dropdown:
              on-click              one presenter click per group
              with-previous         all groups start together on slide entry
              after-previous (default)  cascade on slide entry;
                                        gap = --animation-stagger seconds
-           mixed (legacy) cycles a larger 16-effect pool by group order;
-           random samples from the same legacy pool. Use "-a none" to disable
+           mixed (compatible mode name) cycles a larger 16-preset canonical
+           PowerPoint pool by group order; random samples from the same pool.
+           Use "-a none" to disable
            element builds explicitly.
 
 Speaker notes (enabled by default):
@@ -711,6 +784,17 @@ Recorded narration:
                         choices=list(CANVAS_FORMATS.keys()), default=None,
                         help='Require SVG canvases to match this registered format')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
+    parser.add_argument(
+        '--quick-test',
+        action='store_true',
+        help=(
+            'Test-only direct export of a small fixed SVG roster from '
+            'svg_output/. Infer one consistent canvas from the SVGs, use a flat '
+            'package with converter defaults, and skip spec_lock.md, notes, '
+            'animations, backup, conversion trace, and validation report '
+            'artifacts.'
+        ),
+    )
 
     merge_group = parser.add_mutually_exclusive_group()
     merge_group.add_argument('--merge-paragraphs', action='store_true', dest='merge_paragraphs',
@@ -720,10 +804,16 @@ Recorded narration:
                              help='Disable paragraph merging. Every dy-stacked line becomes '
                                   'its own text frame for strict SVG line-layout fidelity.')
     parser.set_defaults(merge_paragraphs=True)
-    parser.add_argument('--conversion-trace', action='store_true', default=False,
-                        help='Write a JSON diagnostics report next to the native PPTX '
-                             '(<output>.trace.json). Records per-slide SVG element '
-                             'conversion decisions for debugging.')
+    parser.add_argument(
+        '--conversion-trace',
+        nargs='?',
+        const='',
+        default=None,
+        metavar='PATH',
+        help='Write per-slide SVG conversion diagnostics. Without PATH, write '
+             '<project>/validation/<output_stem>.trace.json; relative PATHs '
+             'are resolved from the project root.',
+    )
     parser.add_argument(
         '--native-charts-and-tables',
         dest='native_objects',
@@ -767,9 +857,11 @@ Recorded narration:
     parser.add_argument('--no-image-optimize', action='store_true',
                         help='Disable native PPTX raster image optimization; embeds original image bytes.')
     parser.add_argument('--image-max-dimension', type=int, default=2560,
-                        help='Maximum optimized raster image dimension in pixels (default: 2560).')
+                        help='Preferred optimized raster cap in pixels; cap mode may retain more '
+                             'for cropped/stretched effective resolution (default: 2560).')
     parser.add_argument('--image-sizing', choices=['cap', 'display'], default='cap',
-                        help='Raster sizing mode: cap only limits source dimensions; '
+                        help='Raster sizing mode: cap limits source dimensions without '
+                             'undersupplying cropped/stretched visible pixels; '
                              'display sizes from the SVG rendered box (default: cap).')
     parser.add_argument('--image-scale', type=float, default=2.0,
                         help='Target optimized image pixels per SVG display pixel '
@@ -803,15 +895,20 @@ Recorded narration:
 
     parser.add_argument('-a', '--animation', type=str, choices=animation_choices,
                         default=None,
-                        help='Per-element entrance animation (native shapes mode '
+                        help='Per-element object animation (native shapes mode '
                              'only). Default "none" (no auto element builds; page '
-                             'transitions still apply). Pick a single effect, "auto" '
+                             'transitions still apply). Pick a native entrance_*/'
+                             'emphasis_*/path_*/exit_* key or "auto" '
                              '(map effect from group id — image-like ids cycle a '
-                             'richer pool for visual variation, fallback cycles fade/'
-                             'wipe/fly/zoom), "mixed" (legacy 16-effect pool), or '
-                             '"random".')
+                             'richer canonical pool for visual variation, fallback '
+                             'cycles entrance_fade/entrance_wipe/entrance_fly/'
+                             'entrance_zoom), "mixed" (canonical 16-preset pool), or '
+                             '"random". Legacy short names remain accepted only for '
+                             'compatibility.')
     parser.add_argument('--animation-duration', type=positive_float, default=None,
-                        help='Per-element entrance duration in seconds (default: 0.4)')
+                        help='Per-element object-animation duration in seconds '
+                             '(default: 0.4; instantaneous native presets keep their '
+                             'PowerPoint-authored duration)')
     parser.add_argument('--animation-trigger', type=str,
                         choices=['on-click', 'with-previous', 'after-previous'],
                         default=None,
@@ -866,6 +963,49 @@ Recorded narration:
             file=sys.stderr,
         )
 
+    if args.quick_test:
+        conflicts: list[str] = []
+        if args.source not in {None, 'output'}:
+            conflicts.append('--source must be omitted or output')
+        if args.pptx_structure not in {None, 'flat'}:
+            conflicts.append('--pptx-structure must be omitted or flat')
+        if args.conversion_trace is not None:
+            conflicts.append('--conversion-trace')
+        if args.native_objects:
+            conflicts.append('--native-charts-and-tables')
+        if args.animation_config:
+            conflicts.append('--animation-config')
+        if args.recorded_narration:
+            conflicts.append('--recorded-narration')
+        if args.narration_audio_dir:
+            conflicts.append('--narration-audio-dir')
+        if args.use_narration_timings:
+            conflicts.append('--use-narration-timings')
+        if args.auto_advance is not None:
+            conflicts.append('--auto-advance')
+        if args.transition is not None or args.transition_duration is not None:
+            conflicts.append('transition overrides')
+        if any(
+            value is not None
+            for value in (
+                args.animation,
+                args.animation_duration,
+                args.animation_trigger,
+                args.animation_stagger,
+            )
+        ):
+            conflicts.append('animation overrides')
+        if conflicts:
+            print(
+                "Error: --quick-test cannot be combined with: "
+                + ", ".join(conflicts),
+                file=sys.stderr,
+            )
+            return 1
+        args.no_notes = True
+        args.no_animations = True
+        args.pptx_structure = 'flat'
+
     project_path = Path(args.project_path)
     if not project_path.exists():
         print(f"Error: Path does not exist: {project_path}")
@@ -875,13 +1015,17 @@ Recorded narration:
     native_structure_contract = None
     pptx_structure = args.pptx_structure
     lock_path = project_path / 'spec_lock.md'
-    if not lock_path.is_file():
+    if not args.quick_test and not lock_path.is_file():
         print(
             "Error: spec_lock.md is required for release SVG export",
             file=sys.stderr,
         )
         return 1
-    declared_structure_mode = _declared_pptx_structure_mode(project_path)
+    declared_structure_mode = (
+        None
+        if args.quick_test
+        else _declared_pptx_structure_mode(project_path)
+    )
     if pptx_structure in _LEGACY_PPTX_STRUCTURE_MODES:
         _print_structure_contract_error(pptx_structure)
         return 1
@@ -928,7 +1072,7 @@ Recorded narration:
     theme_font_spec = None
     master_text_style_spec = None
     theme_color_spec = None
-    if pptx_structure in {'flat', 'structured'}:
+    if pptx_structure in {'flat', 'structured'} and not args.quick_test:
         try:
             theme_font_spec = load_theme_font_spec(project_path)
             master_text_style_spec = load_master_text_style_spec(project_path)
@@ -968,8 +1112,12 @@ Recorded narration:
         project_name = project_path.name
 
     canvas_format = args.format
-    expected_viewbox = _declared_canvas_viewbox(project_path)
-    if expected_viewbox is None:
+    expected_viewbox = (
+        None
+        if args.quick_test
+        else _declared_canvas_viewbox(project_path)
+    )
+    if expected_viewbox is None and not args.quick_test:
         print(
             "Error: spec_lock.md must contain canvas.viewBox for release export",
             file=sys.stderr,
@@ -1100,7 +1248,8 @@ Recorded narration:
         narrated_tag = "_narrated" if (args.recorded_narration or args.narration_audio_dir) else ""
         native_path = exports_dir / f"{project_name}_{timestamp}{native_tag}{narrated_tag}.pptx"
         # Preserve the authored svg_output/ beside every default-flow export.
-        backup_dir = project_path / "backup" / timestamp
+        if not args.quick_test:
+            backup_dir = project_path / "backup" / timestamp
 
     native_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1277,8 +1426,17 @@ Recorded narration:
             else transition_defaults.get('effect', 'fade')
         )
     )
-    transition = None if transition_effect == 'none' else transition_effect
     try:
+        transition, transition_effect_options = (
+            normalize_transition_effect_request(
+                transition_effect,
+                (
+                    None
+                    if transition_arg is not None or args.no_animations
+                    else transition_defaults.get('effect_options')
+                ),
+            )
+        )
         transition_duration = validate_seconds(
             (
                 args.transition_duration
@@ -1310,13 +1468,21 @@ Recorded narration:
             else (
                 args.animation
                 if args.animation is not None
-                # Per-element entrance is opt-in by default: auto-firing element builds
-                # read as the "AI deck" tell and were unsolicited. Page transitions stay
-                # on (see transition default above). Re-enable with -a auto / animations.json.
+                # Per-element object motion is opt-in by default: unsolicited
+                # auto-firing builds read as the "AI deck" tell. Page transitions
+                # stay on; enable objects with -a or animations.json.
                 else animation_defaults.get('effect', 'none')
             )
         )
-        animation = normalize_animation_effect(animation_effect)
+        normalized_animation = normalize_animation_effect(animation_effect)
+        # Keep the raw request for the builder so legacy directional aliases
+        # can desugar into canonical effect_options instead of losing their
+        # direction during early CLI normalization.
+        animation = (
+            None
+            if normalized_animation is None
+            else str(animation_effect)
+        )
         animation_duration = validate_seconds(
             (
                 args.animation_duration
@@ -1388,7 +1554,7 @@ Recorded narration:
     # are still stamped at export; only the authored fields stay blank.
     doc_metadata = None
     metadata_path = project_path / 'metadata.json'
-    if metadata_path.is_file():
+    if metadata_path.is_file() and not args.quick_test:
         try:
             loaded = json.loads(metadata_path.read_text(encoding='utf-8'))
         except (json.JSONDecodeError, OSError) as exc:
@@ -1414,6 +1580,7 @@ Recorded narration:
         structure_name=structure_name,
         verbose=verbose,
         transition=transition,
+        transition_effect_options=transition_effect_options,
         transition_duration=transition_duration,
         auto_advance=auto_advance,
         notes=notes,
@@ -1423,6 +1590,7 @@ Recorded narration:
         animation_stagger=animation_stagger,
         animation_trigger=animation_trigger,
         animation_config=animation_config,
+        animation_resource_root=project_path,
         animation_cli_overrides=animation_cli_overrides,
         narration_audio=narration_audio,
         use_narration_timings=use_narration_timings,
@@ -1452,10 +1620,19 @@ Recorded narration:
         print(f"  Output file: {native_path}")
         print()
 
-    conversion_trace_path = (
-        native_path.with_name(native_path.name + '.trace.json')
-        if args.conversion_trace else None
-    )
+    conversion_trace_path: Path | None = None
+    if args.conversion_trace is not None:
+        if args.conversion_trace:
+            requested_trace_path = Path(args.conversion_trace).expanduser()
+            conversion_trace_path = (
+                requested_trace_path
+                if requested_trace_path.is_absolute()
+                else project_path / requested_trace_path
+            )
+        else:
+            conversion_trace_path = (
+                project_path / 'validation' / f'{native_path.stem}.trace.json'
+            )
     try:
         success = create_pptx_with_native_svg(
             output_path=native_path,
@@ -1501,6 +1678,31 @@ Recorded narration:
             print(f"  [info] svg_output/ not found, backup skipped")
 
     if success:
+        if args.quick_test:
+            try:
+                package = _validate_quick_test_output(
+                    native_path,
+                    expected_slide_count=len(native_files),
+                )
+            except PptxPostflightValidationError as exc:
+                print(
+                    "Error: quick-test PPTX failed in-memory validation and "
+                    f"must not be used: {exc}",
+                    file=sys.stderr,
+                )
+                print(
+                    f"  Invalid output remains at: {native_path}",
+                    file=sys.stderr,
+                )
+                return 1
+            if verbose:
+                print(
+                    "  [QUICK-TEST] "
+                    f"status=passed slides={package['slides']} "
+                    "sidecars=none"
+                )
+                print(f"  [PPTX] {native_path}")
+            return 0
         try:
             receipt = _write_postflight_report(
                 output_path=native_path,

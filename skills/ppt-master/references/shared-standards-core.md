@@ -424,8 +424,10 @@ helper cannot write a project, select layout, or generate a page.
 
 **Authoring paint boundary**: v1 accepts `none` or six-digit solid HEX fill and
 stroke, optional fill/stroke opacity, stroke width, line cap, and line join.
-Generated pages use `spec_lock.md` for stable semantic color anchors and choose
-page-local paint from the retained Design Spec, style, and composition context;
+Normal generated pages use `spec_lock.md` for stable semantic color anchors and
+choose page-local paint from the retained Design Spec, style, and composition context.
+The test-only [`quick-test`](../workflows/profiles/quick-test.md) profile has no
+lock: keep every chosen paint value explicit in the SVG.
 `create-template` authored templates take their values from the confirmed brief
 and template `design_spec.md`.
 Use ordinary SVG for gradients, patterns, filters, or other treatments outside
@@ -528,7 +530,7 @@ continue without modification.
 
 ## 3. Canvas Format Quick Reference
 
-Use the already locked canvas id and exact viewBox. [`canvas-formats.md`](canvas-formats.md) owns format selection; this core owns only SVG conformance on that canvas.
+Use the already locked canvas id and exact viewBox. [`canvas-formats.md`](canvas-formats.md) owns format selection; this core owns only SVG conformance on that canvas. The test-only [`quick-test`](../workflows/profiles/quick-test.md) profile has no lock; its first SVG establishes the canvas and every remaining page must use the identical viewBox.
 
 ---
 
@@ -550,13 +552,15 @@ Use the already locked canvas id and exact viewBox. [`canvas-formats.md`](canvas
 Semantic markers are minimal compiler hints. Flat pages declare one root `data-pptx-page-role` and omit Master/Layout/layer/placeholder markers. Structured pages carry their final root identity, layer atoms, slots, and native-object metadata from authoring start and omit `data-pptx-page-role`. Use `data-pptx-role` with a stable `id` only when no specialized marker expresses page-frame behavior. Keep ordinary visible content in SVG attributes/text; [`semantic-svg.md`](semantic-svg.md) owns the vocabulary.
 
 - **Canvas authority**: New authoring writes `viewBox="0 0 W H"` with positive
-  integer pixels from the lock. Numerically equivalent spellings and positive
+  integer pixels from the lock, or from the first SVG when the explicit
+  `quick-test` profile is active. Numerically equivalent spellings and positive
   fractional imported dimensions remain compatible; export quantizes once at
   `1 SVG px = 9,525 EMU`. Invalid/non-finite values, non-zero origin,
   non-positive size, or unsupported PowerPoint dimensions are errors. All pages
-  and Layout prototypes in one build share the numeric canvas and match
-  `spec_lock.md canvas.viewBox`; standalone templates match `design_spec.md
-  canvas_viewbox`. Optional root `width`/`height` do not override `viewBox`.
+  and Layout prototypes in one normal build share the numeric canvas and match
+  `spec_lock.md canvas.viewBox`; quick-test pages match the first SVG;
+  standalone templates match `design_spec.md canvas_viewbox`. Optional root
+  `width`/`height` do not override `viewBox`.
   Root `<svg>` transform is forbidden; nested crop and `<symbol viewBox>` keep
   their own contracts.
 - **Font portability**: font families used by the deck must resolve to installed
@@ -576,7 +580,7 @@ These forms are needed only when the stated PPT behavior matters:
 | One editable PPT text frame with mixed inline formatting or wrapped prose | Keep one logical paragraph in one `<text>`. Use non-positional `<tspan>` children for inline runs. Keep the first wrapped line as direct text and put each later line in a direct positioned `<tspan>` that repeats the parent `x` and uses positive relative `dy`; an all-`<tspan>` form may start with `dy="0"`. Same-size, evenly stacked lines flow in the current paragraph; a font-size change, list marker, or larger accepted gap starts another paragraph in that frame. Sibling `<text>` elements are forbidden as line breaks for one paragraph; they remain valid for semantically independent frames. |
 | Stable object grouping or object-level animation anchor | Wrap the intended object in `<g id="...">`. Content grouping is **mandatory** per §4.3 — a top-level `<g id>` is also the animation anchor; it is not an optional convenience. |
 | Native PowerPoint background promotion | Outside structured mode, the first eligible visual layer may be a direct full-canvas `<rect>` or one inside a simple single-child group. Its fill must have a registered native mapping (solid, linear/radial gradient, or preset pattern), and it must have no transform, filter, clip, rounding, or visible stroke. Export writes the fill as Slide `p:bg`; image elements remain pictures. Structured routes use the narrower explicit solid-background ownership contract in [`pptx-structure-interface.md`](./pptx-structure-interface.md). |
-| Free-design / brand-only PowerPoint structure | Use `pptx_structure.mode: flat`. Keep every represented object Slide-local; export materializes one clean project-owned Master plus one Blank Layout from the current lock, removes stock content placeholders/Layout inventory, and retains only the standard date/footer/slide-number capability hooks. Do not author Master/Layout identities, layers, or placeholder slots. |
+| Free-design / brand-only PowerPoint structure | Use `pptx_structure.mode: flat`. Keep every represented object Slide-local; export materializes one clean project-owned Master plus one Blank Layout from the current lock, removes stock content placeholders/Layout inventory, and retains only the standard date/footer/slide-number capability hooks. Do not author Master/Layout identities, layers, or placeholder slots. Quick-test uses the same flat object ownership but converter-default theme scaffolding because no lock exists. |
 | Reusable template-based PowerPoint Layout | Select one complete authoring SVG per page in `page_layouts`, declare each unique Master/Layout definition once, and assign pages through `page_pptx_layouts`. Strict preserves the prototype contract; adaptive retains its Master and uses a current or new Layout key already declared and assigned by Strategist. Construction cannot extend or mutate that mapping downstream. Non-mirror skin follows `spec_lock`. |
 
 **Hard rule — supported shape conversion**: Every PPT editability claim in this specification refers to the project converter reading `svg_output/` and emitting native DrawingML. `svg_final/` is a self-contained visual preview that may be inserted into PowerPoint as an SVG picture. PowerPoint's manual Convert-to-Shape operation is unsupported; do not narrow the authoring contract to its undocumented SVG subset.
@@ -586,6 +590,14 @@ These forms are needed only when the stated PPT behavior matters:
 **Hard rule — root groups protect body-text layout**: Every visible direct root `<g>` declares positive root-coordinate `data-pptx-bounds="x y width height"`. Keep it when frame/native coordinates size one PowerPoint object; placeholder bounds also supply the slot frame. On flat pages, make each module zone as generous as the canvas and sibling layout allow without overlapping another module zone. Checker validates this subcanvas against the root `viewBox`, then recursively validates only estimable `<text>` descendants against it using the shared SVG-to-PPTX per-run width estimate and safety headroom. Nested groups and all shapes, images, paths, `<use>` instances, effects, and object frames are not content-boundary inputs. Per side, Checker ignores text/bounds overflow through `1px`, warns through `5%` of the containing boundary dimension, and fails above `5%`. Bounds do not clip or reflow.
 
 Wrap each logical Slide-local body unit in one descriptive top-level `<g id>`; group count follows the page's semantic units, and each group becomes one animation step when animation is enabled. Nested implementation groups may remain anonymous and need no bounds; any nested bounds are ignored. Flat pages use ordinary groups; structured slots already qualify, while titles, direct atomic Master/Layout elements, and canvas-level static framing—including background images and full-canvas scrim/decoration rectangles—may remain root primitives. On flat pages, give such static framing a stable `id` plus `data-pptx-role="background"` / `"decoration"`; never add a `<g>` solely to silence an ungrouped-element advisory.
+
+**Reference — not a constraint**: A top-level semantic group may contain
+descriptive nested `<g>` edit groups when its internal elements form useful
+subunits, such as icon + title, value + label, or repeated information rows.
+Nested groups carry no `data-pptx-bounds` and create no automatic animation
+step; an unnecessary one-child wrapper may flatten. Choose whether and how
+deeply to nest from the page's actual editing semantics—there is no default
+nesting pattern, level, or quota.
 
 **Structural atoms and slots are excluded automatically.** `data-pptx-layer` and `data-pptx-placeholder` semantics are read first; otherwise explicit `data-pptx-role` values (`background`, `decoration`, `header`, `footer`, `chrome`, `watermark`, `page-number`, `logo`) mark Slide-local static framing (§4.1, [`semantic-svg.md`](semantic-svg.md)). A normal slot group has exactly one direct compatible carrier; several drawing atoms require the explicit composite `object` proxy fallback. Native chart/table carrier groups retain their specialized [`native-data-interface.md`](./native-data-interface.md) contract.
 
@@ -610,7 +622,7 @@ separate parent content group; never put them inside the preset group itself.
 
 - One giant `<g>` around the whole slide (collapses to a single animation step).
 - Many ungrouped Slide-local `<rect>` / `<text>` / `<path>` atoms — they have no stable sidecar target and selection/editing degrades. Primitive fallback applies only when the root contains no top-level `<g>` at all; it is capped at 8 visible primitives.
-- One group per icon / text line / mark (too many steps).
+- One top-level group per icon / text line / mark (too many animation steps).
 - Anonymous top-level groups — every top-level semantic group needs a descriptive `id`.
 
 **Naming — required.** A descriptive, page-unique `id` on every top-level content `<g>` (`card-1`, `step-discover`, `header`, `footer`) is mandatory; it is the stable SVG-side animation and trace anchor. An anonymous top-level group still converts, but `animations.json` cannot reference it; an anonymous one-child implementation wrapper may also flatten. Primitive fallback is unrelated and applies only to roots with no top-level groups.
@@ -620,8 +632,10 @@ separate parent content group; never put them inside the preset group itself.
   <!-- Shadow only if the card floats over a colored panel; on flat white, omit it. -->
   <rect x="60" y="115" width="565" height="260" rx="20" fill="#FFFFFF" filter="url(#shadow)"/>
   <use data-icon="chunk-filled/bolt" x="108" y="163" width="44" height="44" fill="#0071E3"/>
-  <text x="105" y="270" font-size="56" font-weight="bold" fill="#0071E3">10×</text>
-  <text x="250" y="270" font-size="30" font-weight="bold" fill="#1D1D1F">Faster</text>
+  <g id="card-benefits-metric">
+    <text x="105" y="270" font-size="56" font-weight="bold" fill="#0071E3">10×</text>
+    <text x="250" y="270" font-size="30" font-weight="bold" fill="#1D1D1F">Faster</text>
+  </g>
   <text x="105" y="310" font-size="18" fill="#6E6E73">Reduce production time from days to hours.</text>
 </g>
 ```
@@ -630,9 +644,12 @@ separate parent content group; never put them inside the preset group itself.
 
 ## 5. Workflow Authority
 
-The serial post-processing and export workflow belongs to
-[`generate-pptx.md`](../workflows/generate-pptx.md) Step 7. This file defines SVG authoring boundaries
-and intentionally does not mirror commands, flags, or output behavior.
+The normal serial post-processing and export workflow belongs to
+[`generate-pptx.md`](../workflows/generate-pptx.md) Step 7. The explicit
+test-only exception belongs to
+[`quick-test.md`](../workflows/profiles/quick-test.md). This file defines SVG
+authoring boundaries and intentionally does not mirror commands, flags, or
+output behavior.
 
 ---
 
@@ -640,5 +657,5 @@ and intentionally does not mirror commands, flags, or output behavior.
 ## 8. Scope Boundary
 
 Generate project structure, commands, quality-gate order, and export products
-are owned by [`generate-pptx.md`](../workflows/generate-pptx.md). They are
-intentionally outside this SVG authoring policy.
+are owned by [`generate-pptx.md`](../workflows/generate-pptx.md) and its
+selected profile. They are intentionally outside this SVG authoring policy.
