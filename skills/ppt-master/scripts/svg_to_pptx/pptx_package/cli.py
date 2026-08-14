@@ -19,7 +19,12 @@ _SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
+from attribution_guard import require_skill_integrity  # noqa: E402
 from console_encoding import configure_utf8_stdio  # noqa: E402
+from language_tags import (  # noqa: E402
+    LanguageTagError,
+    normalize_language_tag,
+)
 from native_payloads import PAYLOAD_STORE_RELATIVE_PATH  # noqa: E402
 from pptx_animations import (  # noqa: E402
     ANIMATIONS,
@@ -45,7 +50,7 @@ if __package__ in {None, ''}:
     __package__ = 'svg_to_pptx'
 
 from .dimensions import CANVAS_FORMATS, get_project_info
-from .discovery import find_svg_files, find_notes_files
+from .discovery import NotesFileReadError, find_notes_files, find_svg_files
 from .builder import create_pptx_with_native_svg
 from ..native_objects import (
     native_fallback_kind,
@@ -54,13 +59,23 @@ from ..native_objects import (
 )
 from ..native_objects.marker_status import native_marker_release_block_reason
 from ..drawingml.theme_colors import ThemeColorError, load_theme_color_spec
+from ..drawingml.context import (
+    TEXT_FLOW_PRESERVE,
+    TEXT_FLOW_REFLOW,
+    TEXT_FLOW_SPLIT,
+)
 from ..drawingml.theme_fonts import (
     ThemeFontError,
     load_master_text_style_spec,
     load_theme_font_spec,
 )
 from ..drawingml.utils import unsafe_exported_font_faces
-from .narration import NARRATION_EXTENSIONS, find_narration_files, probe_audio_duration
+from .narration import (
+    DEFAULT_NARRATION_START_FLOOR,
+    NARRATION_EXTENSIONS,
+    find_narration_files,
+    probe_audio_duration,
+)
 from .template_structure import (
     TemplateStructureError,
     load_pptx_structure_lock,
@@ -70,6 +85,7 @@ from .template_structure import (
     template_prototype_errors,
 )
 from ..animation_config import (
+    animation_group_effect_entries,
     load_animation_config,
     validate_animation_config,
     validate_animation_config_errors,
@@ -302,6 +318,38 @@ def _quality_report_context(
     }
 
 
+def _quality_gate_status(
+    quality: dict[str, object],
+) -> tuple[str, int]:
+    """Return final-gate status and introduced-warning count."""
+    categories = quality.get('categories')
+    blocking_count = None
+    introduced_warning_count = 0
+    if isinstance(categories, dict):
+        blocking = categories.get('blocking')
+        if isinstance(blocking, dict):
+            blocking_count = blocking.get('count')
+        introduced = categories.get('introduced')
+        if (
+            isinstance(introduced, dict)
+            and isinstance(introduced.get('count'), int)
+        ):
+            introduced_warning_count = int(introduced['count'])
+    if quality.get('status') != 'loaded':
+        return str(quality.get('status') or 'not-provided'), introduced_warning_count
+    if quality.get('stage') != 'final':
+        return 'non-final', introduced_warning_count
+    if not isinstance(blocking_count, int):
+        return 'unverified', introduced_warning_count
+    if blocking_count > 0:
+        return 'failed', introduced_warning_count
+    if quality.get('source_match') == 'mismatch':
+        return 'stale', introduced_warning_count
+    if quality.get('source_match') != 'passed':
+        return 'unverified', introduced_warning_count
+    return 'passed', introduced_warning_count
+
+
 def _postflight_warning_summaries(
     *,
     quality_gate: str,
@@ -337,6 +385,7 @@ def _write_postflight_report(
     pptx_structure: str,
     backup_path: Path | None,
     conversion_trace_path: Path | None,
+    deck_motion: dict[str, object],
 ) -> _PostflightReceipt:
     """Write the unified package/resource audit for a successful PPTX."""
     try:
@@ -357,30 +406,7 @@ def _write_postflight_report(
     source_audit = _source_resource_audit(svg_files)
     source_fingerprint = _svg_source_fingerprint(svg_files)
     quality = _quality_report_context(project_path, source_fingerprint)
-    quality_categories = quality.get('categories')
-    blocking_count = None
-    introduced_warning_count = 0
-    if isinstance(quality_categories, dict):
-        blocking = quality_categories.get('blocking')
-        if isinstance(blocking, dict):
-            blocking_count = blocking.get('count')
-        introduced = quality_categories.get('introduced')
-        if isinstance(introduced, dict) and isinstance(introduced.get('count'), int):
-            introduced_warning_count = int(introduced['count'])
-    if quality.get('status') != 'loaded':
-        quality_gate = str(quality.get('status') or 'not-provided')
-    elif quality.get('stage') != 'final':
-        quality_gate = 'non-final'
-    elif not isinstance(blocking_count, int):
-        quality_gate = 'unverified'
-    elif blocking_count > 0:
-        quality_gate = 'failed'
-    elif quality.get('source_match') == 'mismatch':
-        quality_gate = 'stale'
-    elif quality.get('source_match') != 'passed':
-        quality_gate = 'unverified'
-    else:
-        quality_gate = 'passed'
+    quality_gate, introduced_warning_count = _quality_gate_status(quality)
     unresolved_tokens = source_audit['unresolved_template_tokens']
     external_image_count = source_audit['images']['external']
     generic_only_font_stacks = source_audit['fonts']['generic_only_stacks']
@@ -443,6 +469,7 @@ def _write_postflight_report(
         },
         'quality': quality,
         'resources': source_audit,
+        'deck_motion': deck_motion,
         'backup_path': str(backup_path.resolve()) if backup_path else None,
         'conversion_trace_path': (
             str(conversion_trace_path.resolve())
@@ -473,6 +500,58 @@ def _write_postflight_report(
     )
 
 
+def _load_deck_motion_handoff(
+    project_path: Path,
+    report_arg: str,
+    svg_files: list[Path],
+) -> dict[str, object]:
+    """Load source-bound deck motion from a successful base export report."""
+    report_path = Path(report_arg).expanduser()
+    if not report_path.is_absolute() and not report_path.is_file():
+        report_path = project_path / report_path
+    try:
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except FileNotFoundError as exc:
+        raise ValueError(
+            f'deck-motion handoff report does not exist: {report_path}'
+        ) from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f'deck-motion handoff report is unreadable: {report_path}: {exc}'
+        ) from exc
+    if not isinstance(report, dict):
+        raise ValueError('deck-motion handoff report must be a JSON object')
+    if report.get('schema') != 'ppt-master.pptx-postflight-report.v1':
+        raise ValueError(
+            'deck-motion handoff requires a ppt-master postflight report'
+        )
+    if report.get('status') not in {'passed', 'passed-with-warnings'}:
+        raise ValueError('deck-motion handoff report is not a successful export')
+    source = _as_dict(report.get('source'))
+    if source.get('fingerprint') != _svg_source_fingerprint(svg_files):
+        raise ValueError(
+            'deck-motion handoff does not match the current svg_output; '
+            'run the base export again'
+        )
+    motion = report.get('deck_motion')
+    if not isinstance(motion, dict):
+        raise ValueError(
+            'deck-motion handoff is missing from the base export report; '
+            'run the base export again'
+        )
+    if motion.get('narration_timings') is True:
+        raise ValueError(
+            'deck-motion handoff must reference a base non-narrated export report'
+        )
+    if not isinstance(motion.get('transition'), dict):
+        raise ValueError('deck-motion handoff transition must be an object')
+    if not isinstance(motion.get('animation'), dict):
+        raise ValueError('deck-motion handoff animation must be an object')
+    if not isinstance(motion.get('cli_overrides'), dict):
+        raise ValueError('deck-motion handoff cli_overrides must be an object')
+    return motion
+
+
 def _print_postflight_receipt(receipt: _PostflightReceipt) -> None:
     """Print the compact completion evidence; keep the full JSON on disk."""
     print(
@@ -486,30 +565,6 @@ def _print_postflight_receipt(receipt: _PostflightReceipt) -> None:
         print(f'  [POSTFLIGHT][WARNING] {warning}')
     print(f'  [PPTX] {receipt.output_path}')
     print(f'  [REPORT] {receipt.report_path}')
-
-
-def _validate_quick_test_output(
-    output_path: Path,
-    *,
-    expected_slide_count: int,
-) -> dict[str, object]:
-    """Validate a quick-test PPTX without writing a report sidecar."""
-    try:
-        package = _package_part_counts(output_path)
-    except (OSError, zipfile.BadZipFile) as exc:
-        raise PptxPostflightValidationError(
-            f"quick-test PPTX is not a readable ZIP package: {exc}"
-        ) from exc
-    if package['zip_integrity'] != 'passed':
-        raise PptxPostflightValidationError(
-            f"quick-test PPTX ZIP integrity failed at {package['corrupt_member']}"
-        )
-    if package['slides'] != expected_slide_count:
-        raise PptxPostflightValidationError(
-            "Quick-test Slide count does not match authored SVG count: "
-            f"{package['slides']} != {expected_slide_count}"
-        )
-    return package
 
 
 def _declared_pptx_structure_mode(project_path: Path) -> str | None:
@@ -538,6 +593,28 @@ def _declared_canvas_viewbox(project_path: Path) -> str | None:
     canvas = lock.get('canvas', {})
     value = canvas.get('viewBox')
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _declared_primary_language(project_path: Path) -> str | None:
+    """Return the canonical content language declared by the execution lock."""
+    lock_path = project_path / 'spec_lock.md'
+    try:
+        from update_spec import parse_lock
+
+        lock = parse_lock(lock_path)
+    except (OSError, ValueError):
+        return None
+    communication = lock.get('communication', {})
+    value = communication.get('primary_language')
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return normalize_language_tag(value)
+    except LanguageTagError as exc:
+        raise LanguageTagError(
+            'spec_lock.md communication.primary_language '
+            f'is invalid: {exc}'
+        ) from exc
 
 
 def _print_structure_contract_error(
@@ -658,42 +735,75 @@ def _recorded_narration_on_click_slides(
         slide_animation = animation
         if not animation_cli_overrides.get('animation') and 'effect' in anim_cfg:
             slide_animation = normalize_animation_effect(anim_cfg.get('effect'))
-        groups_cfg = _as_dict(slide_cfg.get('groups'))
-        has_explicit_animation = any(
-            isinstance(group_cfg, dict)
-            and 'effect' in group_cfg
-            and normalize_animation_effect(group_cfg.get('effect')) is not None
-            for group_cfg in groups_cfg.values()
-        )
-        if slide_animation is None and not has_explicit_animation:
-            continue
-        has_interactive_animation = any(
-            isinstance(group_cfg, dict)
-            and isinstance(group_cfg.get('trigger_shape'), str)
-            and bool(group_cfg['trigger_shape'].strip())
-            and (
-                (
-                    'effect' in group_cfg
-                    and normalize_animation_effect(group_cfg.get('effect')) is not None
-                )
-                or ('effect' not in group_cfg and slide_animation is not None)
-            )
-            for group_cfg in groups_cfg.values()
-        )
-        if has_interactive_animation:
-            blocked.append(svg_path.stem)
-            continue
-
         slide_trigger = animation_trigger
-        if not animation_cli_overrides.get('animation_trigger') and anim_cfg.get('trigger'):
+        if (
+            not animation_cli_overrides.get('animation_trigger')
+            and anim_cfg.get('trigger')
+        ):
             slide_trigger = normalize_animation_trigger(anim_cfg.get('trigger'))
-        if slide_trigger == 'on-click':
+
+        groups_cfg = _as_dict(slide_cfg.get('groups'))
+        has_interactive_animation = False
+        for group_id, group_cfg in groups_cfg.items():
+            if not isinstance(group_cfg, dict):
+                continue
+            group_path = (
+                f'slides[{json.dumps(svg_path.stem, ensure_ascii=False)}]'
+                f'.groups[{json.dumps(str(group_id), ensure_ascii=False)}]'
+            )
+            for _effect_path, effect_cfg in animation_group_effect_entries(
+                group_cfg,
+                path=group_path,
+            ):
+                row_effect = (
+                    normalize_animation_effect(effect_cfg.get('effect'))
+                    if 'effect' in effect_cfg
+                    else slide_animation
+                )
+                if row_effect is None:
+                    continue
+                row_trigger = (
+                    normalize_animation_trigger(effect_cfg.get('trigger'))
+                    if effect_cfg.get('trigger')
+                    else slide_trigger
+                )
+                if effect_cfg.get('trigger_shape') is not None:
+                    has_interactive_animation = True
+                    break
+                if row_trigger == 'on-click':
+                    has_interactive_animation = True
+                    break
+            if has_interactive_animation:
+                break
+
+        if has_interactive_animation or (
+            slide_animation is not None and slide_trigger == 'on-click'
+        ):
             blocked.append(svg_path.stem)
     return blocked
 
 
+def _resolve_animation_config_source(
+    project_path: Path,
+    requested_config: str | None,
+    *,
+    recorded_narration: bool,
+    no_animations: bool,
+) -> str | None:
+    """Resolve the animation sidecar selected for this export."""
+    if requested_config is not None or not recorded_narration or no_animations:
+        return requested_config
+
+    canonical_exists = (project_path / 'animations.json').is_file()
+    narration_exists = (project_path / 'narration_animations.json').is_file()
+    if canonical_exists or narration_exists:
+        return 'narration_animations.json'
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for the SVG to PPTX conversion tool."""
+    require_skill_integrity()
     transition_choices = [
         'none',
         *NATIVE_TRANSITION_KEYS,
@@ -709,7 +819,7 @@ def main(argv: list[str] | None = None) -> int:
 Examples:
     %(prog)s examples/ppt169_demo                         # Default: native pptx -> exports/, svg_output -> backup/<ts>/
     %(prog)s examples/ppt169_demo -o out.pptx            # Explicit path (no backup/)
-    %(prog)s projects/_smoke_quick --quick-test           # Test-only: svg_output/ -> PPTX, no sidecars
+    %(prog)s projects/quick_generate_demo --quick-generate # Lockless flat export with normal postflight
 
     # Disable transition / change transition effect
     %(prog)s examples/ppt169_demo -t none
@@ -746,24 +856,29 @@ Per-element object animation (-a/--animation, native shapes mode):
              after-previous (default)  cascade on slide entry;
                                        gap = --animation-stagger seconds
            mixed (compatible mode name) cycles a larger 16-preset canonical
-           PowerPoint pool by group order; random samples from the same pool.
-           Use "-a none" to disable
-           element builds explicitly.
+           PowerPoint entrance pool by group order; random samples from the
+           same entrance pool. Use explicit canonical keys for emphasis,
+           motion-path, or exit duties. Use "-a none" to disable element
+           builds explicitly.
 
-Speaker notes (enabled by default):
+Speaker notes:
     - Automatically reads Markdown notes files from the notes/ directory
     - Supports two naming conventions:
       1. Match by filename (recommended): 01_cover.md corresponds to 01_cover.svg
       2. Match by index: slide01.md corresponds to the 1st SVG (backward compatible)
-    - Use --no-notes to disable
+    - Enabled by default outside Quick Generate; use --no-notes to disable
+    - Disabled by default in Quick Generate; use --with-notes to enable
 
 Recorded narration:
-    %(prog)s examples/ppt169_demo --recorded-narration audio
+    %(prog)s examples/ppt169_demo --recorded-narration audio \\
+      --inherit-motion-from validation/<base>.report.json
     - Keeps speaker notes when enabled
     - Prepares PowerPoint recorded timings and narrations
     - Requires one m4a/mp3/wav file per slide
-    - Uses narration_animations.json by default
-    - Use --animation-config animations.json for the canonical animation
+    - Unless --no-animations is set, recorded narration without an explicit
+      config selects narration_animations.json when either sidecar exists
+    - With no sidecar, --inherit-motion-from may restore base-report deck motion
+    - Use --animation-config animations.json for narration-independent custom motion
     - Use --no-animations for narration and timings without animation motion
     - Embeds per-slide audio matched by SVG filename / slide number
     - Sets slide auto-advance from audio duration so video export can use
@@ -785,25 +900,45 @@ Recorded narration:
                         help='Require SVG canvases to match this registered format')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
     parser.add_argument(
-        '--quick-test',
+        '--quick-generate',
         action='store_true',
         help=(
-            'Test-only direct export of a small fixed SVG roster from '
-            'svg_output/. Infer one consistent canvas from the SVGs, use a flat '
-            'package with converter defaults, and skip spec_lock.md, notes, '
-            'animations, backup, conversion trace, and validation report '
-            'artifacts.'
+            'Export a Quick Generate SVG roster from svg_output/ without '
+            'spec_lock.md. Require a matching final quality report, infer one '
+            'consistent canvas, use a flat package with converter defaults, '
+            'and support normal export capabilities.'
         ),
     )
 
-    merge_group = parser.add_mutually_exclusive_group()
-    merge_group.add_argument('--merge-paragraphs', action='store_true', dest='merge_paragraphs',
-                             help='Compatibility no-op: mergeable paragraph blocks are merged '
-                                  'by default.')
-    merge_group.add_argument('--no-merge', action='store_false', dest='merge_paragraphs',
-                             help='Disable paragraph merging. Every dy-stacked line becomes '
-                                  'its own text frame for strict SVG line-layout fidelity.')
-    parser.set_defaults(merge_paragraphs=True)
+    text_flow_group = parser.add_mutually_exclusive_group()
+    text_flow_group.add_argument(
+        '--reflow-text',
+        action='store_const',
+        const=TEXT_FLOW_REFLOW,
+        dest='text_flow',
+        help=(
+            'Let PowerPoint automatically reflow conservative dy-stacked text '
+            'inside one editable text frame.'
+        ),
+    )
+    text_flow_group.add_argument(
+        '--merge-paragraphs',
+        action='store_const',
+        const=TEXT_FLOW_REFLOW,
+        dest='text_flow',
+        help='Compatibility alias for --reflow-text.',
+    )
+    text_flow_group.add_argument(
+        '--no-merge',
+        action='store_const',
+        const=TEXT_FLOW_SPLIT,
+        dest='text_flow',
+        help=(
+            'Emit every positioned visual line as its own text frame for '
+            'strict per-line SVG positioning.'
+        ),
+    )
+    parser.set_defaults(text_flow=TEXT_FLOW_PRESERVE)
     parser.add_argument(
         '--conversion-trace',
         nargs='?',
@@ -855,19 +990,23 @@ Recorded narration:
         ),
     )
     parser.add_argument('--no-image-optimize', action='store_true',
-                        help='Disable native PPTX raster image optimization; embeds original image bytes.')
+                        help='Disable native PPTX raster image optimization and always embed '
+                             'the original image bytes.')
     parser.add_argument('--image-max-dimension', type=int, default=2560,
-                        help='Preferred optimized raster cap in pixels; cap mode may retain more '
-                             'for cropped/stretched effective resolution (default: 2560).')
+                        help='Preferred raster cap in pixels. Cap mode re-encodes only images '
+                             'that require resizing or EXIF geometry normalization, and may '
+                             'retain more pixels for cropped/stretched visible resolution '
+                             '(default: 2560).')
     parser.add_argument('--image-sizing', choices=['cap', 'display'], default='cap',
-                        help='Raster sizing mode: cap limits source dimensions without '
-                             'undersupplying cropped/stretched visible pixels; '
-                             'display sizes from the SVG rendered box (default: cap).')
+                        help='Raster sizing mode: cap preserves original bytes unless resizing '
+                             'or EXIF geometry normalization is required; display targets the '
+                             'SVG rendered box for explicit compaction (default: cap).')
     parser.add_argument('--image-scale', type=float, default=2.0,
                         help='Target optimized image pixels per SVG display pixel '
                              'when --image-sizing=display (default: 2.0).')
     parser.add_argument('--image-quality', type=int, default=85,
-                        help='JPEG quality for optimized opaque raster images, 1-100 (default: 85).')
+                        help='JPEG quality for raster images re-encoded during optimization, '
+                             '1-100 (default: 85).')
 
     def non_negative_float(value: str) -> float:
         try:
@@ -902,9 +1041,10 @@ Recorded narration:
                              '(map effect from group id — image-like ids cycle a '
                              'richer canonical pool for visual variation, fallback '
                              'cycles entrance_fade/entrance_wipe/entrance_fly/'
-                             'entrance_zoom), "mixed" (canonical 16-preset pool), or '
-                             '"random". Legacy short names remain accepted only for '
-                             'compatibility.')
+                             'entrance_zoom), "mixed" (canonical 16-preset entrance '
+                             'pool), or "random" (the same entrance pool). Use '
+                             'explicit keys for emphasis/path/exit. Legacy short '
+                             'names remain accepted only for compatibility.')
     parser.add_argument('--animation-duration', type=positive_float, default=None,
                         help='Per-element object-animation duration in seconds '
                              '(default: 0.4; instantaneous native presets keep their '
@@ -925,9 +1065,12 @@ Recorded narration:
         type=str,
         default=None,
         help=(
-            'Per-slide/per-object animation config. Recorded narration defaults '
-            'to <project>/narration_animations.json; other exports default to '
-            '<project>/animations.json when present.'
+            'Per-slide/per-object animation config. While motion remains enabled, '
+            'recorded narration without an explicit config selects '
+            '<project>/narration_animations.json when either animation sidecar '
+            'exists, or may inherit base postflight motion with '
+            '--inherit-motion-from when neither exists. '
+            'Other exports default to <project>/animations.json when present.'
         ),
     )
     animation_source.add_argument(
@@ -939,8 +1082,17 @@ Recorded narration:
         ),
     )
 
-    parser.add_argument('--no-notes', action='store_true',
-                        help='Disable speaker notes embedding (enabled by default)')
+    notes_mode = parser.add_mutually_exclusive_group()
+    notes_mode.add_argument(
+        '--with-notes',
+        action='store_true',
+        help='Embed speaker notes. Required to opt in during Quick Generate.',
+    )
+    notes_mode.add_argument(
+        '--no-notes',
+        action='store_true',
+        help='Disable speaker notes embedding (enabled by default outside Quick Generate)',
+    )
     parser.add_argument('--narration-audio-dir', type=str, default=None,
                         help='Low-level audio embedding from this directory; allows partial matches. '
                              'Default-flow exports get the _narrated name suffix.')
@@ -952,6 +1104,26 @@ Recorded narration:
                              '(<project>_<ts>_narrated.pptx) to tell them apart from silent exports.')
     parser.add_argument('--narration-padding', type=non_negative_float, default=0.5,
                         help='Seconds to add after each narration before auto-advance (default: 0.5)')
+    parser.add_argument(
+        '--narration-start-floor',
+        type=non_negative_float,
+        default=DEFAULT_NARRATION_START_FLOOR,
+        help=(
+            'Minimum seconds from slide-transition start to narration start; '
+            'set 0 to start immediately after the transition '
+            f'(default: {DEFAULT_NARRATION_START_FLOOR})'
+        ),
+    )
+    parser.add_argument(
+        '--inherit-motion-from',
+        type=str,
+        default=None,
+        metavar='BASE_POSTFLIGHT_REPORT',
+        help=(
+            'For recorded narration, inherit source-bound deck-wide transition, '
+            'animation, and advance settings from a successful base export report'
+        ),
+    )
 
     raw_argv = list(argv) if argv is not None else sys.argv[1:]
     legacy_native_objects = '--native-objects' in raw_argv
@@ -962,48 +1134,40 @@ Recorded narration:
             '--native-charts-and-tables.',
             file=sys.stderr,
         )
+    if args.animation_config is not None and not args.animation_config.strip():
+        print(
+            'Error: --animation-config must be a non-empty file path',
+            file=sys.stderr,
+        )
+        return 1
+    if args.inherit_motion_from and not args.recorded_narration:
+        print(
+            'Error: --inherit-motion-from requires --recorded-narration',
+            file=sys.stderr,
+        )
+        return 1
+    if args.inherit_motion_from and args.no_animations:
+        print(
+            'Error: --inherit-motion-from cannot be combined with --no-animations',
+            file=sys.stderr,
+        )
+        return 1
 
-    if args.quick_test:
+    if args.quick_generate:
         conflicts: list[str] = []
         if args.source not in {None, 'output'}:
             conflicts.append('--source must be omitted or output')
         if args.pptx_structure not in {None, 'flat'}:
             conflicts.append('--pptx-structure must be omitted or flat')
-        if args.conversion_trace is not None:
-            conflicts.append('--conversion-trace')
-        if args.native_objects:
-            conflicts.append('--native-charts-and-tables')
-        if args.animation_config:
-            conflicts.append('--animation-config')
-        if args.recorded_narration:
-            conflicts.append('--recorded-narration')
-        if args.narration_audio_dir:
-            conflicts.append('--narration-audio-dir')
-        if args.use_narration_timings:
-            conflicts.append('--use-narration-timings')
-        if args.auto_advance is not None:
-            conflicts.append('--auto-advance')
-        if args.transition is not None or args.transition_duration is not None:
-            conflicts.append('transition overrides')
-        if any(
-            value is not None
-            for value in (
-                args.animation,
-                args.animation_duration,
-                args.animation_trigger,
-                args.animation_stagger,
-            )
-        ):
-            conflicts.append('animation overrides')
         if conflicts:
             print(
-                "Error: --quick-test cannot be combined with: "
+                "Error: --quick-generate cannot be combined with: "
                 + ", ".join(conflicts),
                 file=sys.stderr,
             )
             return 1
-        args.no_notes = True
-        args.no_animations = True
+        if not args.with_notes:
+            args.no_notes = True
         args.pptx_structure = 'flat'
 
     project_path = Path(args.project_path)
@@ -1015,7 +1179,7 @@ Recorded narration:
     native_structure_contract = None
     pptx_structure = args.pptx_structure
     lock_path = project_path / 'spec_lock.md'
-    if not args.quick_test and not lock_path.is_file():
+    if not args.quick_generate and not lock_path.is_file():
         print(
             "Error: spec_lock.md is required for release SVG export",
             file=sys.stderr,
@@ -1023,9 +1187,23 @@ Recorded narration:
         return 1
     declared_structure_mode = (
         None
-        if args.quick_test
+        if args.quick_generate
         else _declared_pptx_structure_mode(project_path)
     )
+    primary_language = None
+    if not args.quick_generate:
+        try:
+            primary_language = _declared_primary_language(project_path)
+        except LanguageTagError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        if primary_language is None:
+            print(
+                "Warning: spec_lock.md has no "
+                "communication.primary_language; using legacy per-run "
+                "language detection.",
+                file=sys.stderr,
+            )
     if pptx_structure in _LEGACY_PPTX_STRUCTURE_MODES:
         _print_structure_contract_error(pptx_structure)
         return 1
@@ -1072,7 +1250,7 @@ Recorded narration:
     theme_font_spec = None
     master_text_style_spec = None
     theme_color_spec = None
-    if pptx_structure in {'flat', 'structured'} and not args.quick_test:
+    if pptx_structure in {'flat', 'structured'} and not args.quick_generate:
         try:
             theme_font_spec = load_theme_font_spec(project_path)
             master_text_style_spec = load_master_text_style_spec(project_path)
@@ -1114,24 +1292,67 @@ Recorded narration:
     canvas_format = args.format
     expected_viewbox = (
         None
-        if args.quick_test
+        if args.quick_generate
         else _declared_canvas_viewbox(project_path)
     )
-    if expected_viewbox is None and not args.quick_test:
+    if expected_viewbox is None and not args.quick_generate:
         print(
             "Error: spec_lock.md must contain canvas.viewBox for release export",
             file=sys.stderr,
         )
         return 1
 
-    # Native DrawingML is the only PPTX product. ``-s`` remains an explicit
-    # diagnostic source override; standard export always reads svg_output/.
+    # Native DrawingML is the only PPTX product. A non-output ``-s`` remains a
+    # diagnostic source override; default and explicit output use release rules.
     native_source = args.source or 'output'
-    native_files, native_source_dir = find_svg_files(project_path, native_source)
+    native_files, native_source_dir = find_svg_files(
+        project_path,
+        native_source,
+        allow_fallback=args.source is None and not args.quick_generate,
+    )
     ref_files = native_files
     if not native_files:
-        print("Error: No SVG files found")
+        if args.quick_generate:
+            print(
+                "Error: No SVG files found for --quick-generate in: "
+                f"{project_path / 'svg_output'}",
+                file=sys.stderr,
+            )
+        elif args.source is not None:
+            requested_dir = project_path / native_source_dir
+            print(
+                "Error: No SVG files found in explicitly requested source: "
+                f"{requested_dir}",
+                file=sys.stderr,
+            )
+        else:
+            print("Error: No SVG files found", file=sys.stderr)
         return 1
+
+    release_quality_gate = args.quick_generate or args.source in {None, 'output'}
+    if release_quality_gate:
+        source_fingerprint = _svg_source_fingerprint(native_files)
+        quality = _quality_report_context(project_path, source_fingerprint)
+        quality_gate, _ = _quality_gate_status(quality)
+        if quality_gate != 'passed':
+            export_mode = (
+                '--quick-generate'
+                if args.quick_generate
+                else 'default release export'
+            )
+            print(
+                f"Error: {export_mode} requires a passing final SVG quality "
+                f"report for the current {native_source_dir}/; found "
+                f"{quality_gate}.",
+                file=sys.stderr,
+            )
+            quick_flag = ' --quick-generate' if args.quick_generate else ''
+            print(
+                "Run: python3 skills/ppt-master/scripts/svg_quality_checker.py "
+                f'"{project_path}"{quick_flag} --stage final --json',
+                file=sys.stderr,
+            )
+            return 1
 
     # Compatibility kwargs remain until the builder's old baseline-specific
     # parameters are removed. Structured export never activates either path.
@@ -1247,9 +1468,8 @@ Recorded narration:
         native_tag = "_native_charts_tables" if args.native_objects else ""
         narrated_tag = "_narrated" if (args.recorded_narration or args.narration_audio_dir) else ""
         native_path = exports_dir / f"{project_name}_{timestamp}{native_tag}{narrated_tag}.pptx"
-        # Preserve the authored svg_output/ beside every default-flow export.
-        if not args.quick_test:
-            backup_dir = project_path / "backup" / timestamp
+        # Preserve the authored svg_output/ beside every default-path export.
+        backup_dir = project_path / "backup" / timestamp
 
     native_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1258,7 +1478,11 @@ Recorded narration:
     enable_notes = not args.no_notes
     notes: dict[str, str] = {}
     if enable_notes:
-        notes = find_notes_files(project_path, ref_files)
+        try:
+            notes = find_notes_files(project_path, ref_files)
+        except NotesFileReadError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
 
     narration_audio: dict[str, Path] = {}
     narration_audio_dir_arg = args.recorded_narration or args.narration_audio_dir
@@ -1273,7 +1497,14 @@ Recorded narration:
                 file=sys.stderr,
             )
             return 1
-        narration_audio = find_narration_files(narration_audio_dir, ref_files)
+        try:
+            narration_audio = find_narration_files(
+                narration_audio_dir,
+                ref_files,
+            )
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
         if verbose:
             print(f"  Narration audio directory: {narration_audio_dir}")
             print(f"  Narration audio matched: {len(narration_audio)}/{len(ref_files)} slide(s)")
@@ -1333,13 +1564,12 @@ Recorded narration:
         )
         return 1
 
-    effective_animation_config = args.animation_config
-    if (
-        effective_animation_config is None
-        and args.recorded_narration
-        and not args.no_animations
-    ):
-        effective_animation_config = 'narration_animations.json'
+    effective_animation_config = _resolve_animation_config_source(
+        project_path,
+        args.animation_config,
+        recorded_narration=bool(args.recorded_narration),
+        no_animations=args.no_animations,
+    )
 
     if effective_animation_config:
         config_path = Path(effective_animation_config)
@@ -1387,7 +1617,11 @@ Recorded narration:
 
     config_warnings: list[str] = []
     if animation_config:
-        reference_messages = validate_animation_config(project_path, animation_config)
+        reference_messages = validate_animation_config(
+            project_path,
+            animation_config,
+            svg_files=native_files,
+        )
         config_warnings = [
             message for message in reference_messages
             if ' has no id and cannot be customized in animations.json' in message
@@ -1412,9 +1646,26 @@ Recorded narration:
     elif args.no_animations and verbose:
         print("  Animations: disabled")
 
+    inherited_motion: dict[str, object] = {}
+    if args.inherit_motion_from:
+        try:
+            inherited_motion = _load_deck_motion_handoff(
+                project_path,
+                args.inherit_motion_from,
+                native_files,
+            )
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        if verbose:
+            print(f"  Deck motion handoff: {args.inherit_motion_from}")
+
     defaults = animation_config.get('defaults', {}) if animation_config else {}
     transition_defaults = _as_dict(defaults.get('transition')) if isinstance(defaults, dict) else {}
     animation_defaults = _as_dict(defaults.get('animation')) if isinstance(defaults, dict) else {}
+    inherited_transition = _as_dict(inherited_motion.get('transition'))
+    inherited_animation = _as_dict(inherited_motion.get('animation'))
+    inherited_overrides = _as_dict(inherited_motion.get('cli_overrides'))
 
     transition_arg = args.transition
     transition_effect = (
@@ -1423,7 +1674,11 @@ Recorded narration:
         else (
             transition_arg
             if transition_arg is not None
-            else transition_defaults.get('effect', 'fade')
+            else (
+                inherited_transition['effect']
+                if 'effect' in inherited_transition
+                else transition_defaults.get('effect', 'fade')
+            )
         )
     )
     try:
@@ -1433,7 +1688,11 @@ Recorded narration:
                 (
                     None
                     if transition_arg is not None or args.no_animations
-                    else transition_defaults.get('effect_options')
+                    else (
+                        inherited_transition.get('effect_options')
+                        if 'effect' in inherited_transition
+                        else transition_defaults.get('effect_options')
+                    )
                 ),
             )
         )
@@ -1441,7 +1700,11 @@ Recorded narration:
             (
                 args.transition_duration
                 if args.transition_duration is not None
-                else transition_defaults.get('duration', 0.4)
+                else (
+                    inherited_transition['duration']
+                    if 'duration' in inherited_transition
+                    else transition_defaults.get('duration', 0.4)
+                )
             ),
             "transition duration",
             allow_zero=transition is None,
@@ -1449,13 +1712,33 @@ Recorded narration:
         auto_advance = (
             args.auto_advance
             if args.auto_advance is not None
-            else transition_defaults.get('auto_advance')
+            else (
+                inherited_transition['auto_advance']
+                if 'auto_advance' in inherited_transition
+                else transition_defaults.get('auto_advance')
+            )
         )
         if auto_advance is not None:
             auto_advance = validate_seconds(
                 auto_advance,
                 "transition auto_advance",
                 allow_zero=True,
+            )
+        transition_sound = (
+            None
+            if args.no_animations
+            else (
+                inherited_transition['sound']
+                if 'sound' in inherited_transition
+                else transition_defaults.get('sound')
+            )
+        )
+        if transition_sound is not None and not isinstance(
+            transition_sound,
+            str,
+        ):
+            raise ValueError(
+                'transition sound must be a project-relative .wav path or null'
             )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1471,7 +1754,11 @@ Recorded narration:
                 # Per-element object motion is opt-in by default: unsolicited
                 # auto-firing builds read as the "AI deck" tell. Page transitions
                 # stay on; enable objects with -a or animations.json.
-                else animation_defaults.get('effect', 'none')
+                else (
+                    inherited_animation['effect_request']
+                    if 'effect_request' in inherited_animation
+                    else animation_defaults.get('effect', 'none')
+                )
             )
         )
         normalized_animation = normalize_animation_effect(animation_effect)
@@ -1487,7 +1774,11 @@ Recorded narration:
             (
                 args.animation_duration
                 if args.animation_duration is not None
-                else animation_defaults.get('duration', 0.4)
+                else (
+                    inherited_animation['duration']
+                    if 'duration' in inherited_animation
+                    else animation_defaults.get('duration', 0.4)
+                )
             ),
             "animation duration",
             allow_zero=False,
@@ -1501,7 +1792,11 @@ Recorded narration:
             (
                 args.animation_stagger
                 if args.animation_stagger is not None
-                else animation_defaults.get('stagger', 0.5)
+                else (
+                    inherited_animation['stagger']
+                    if 'stagger' in inherited_animation
+                    else animation_defaults.get('stagger', 0.5)
+                )
             ),
             "animation stagger",
             allow_zero=True,
@@ -1514,20 +1809,65 @@ Recorded narration:
         animation_trigger = normalize_animation_trigger(
             args.animation_trigger
             if args.animation_trigger is not None
-            else animation_defaults.get('trigger', 'after-previous')
+            else (
+                inherited_animation['trigger']
+                if 'trigger' in inherited_animation
+                else animation_defaults.get('trigger', 'after-previous')
+            )
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
     animation_cli_overrides = {
-        'transition': args.transition is not None,
-        'transition_duration': args.transition_duration is not None,
-        'auto_advance': args.auto_advance is not None,
-        'animation': args.animation is not None,
-        'animation_duration': args.animation_duration is not None,
-        'animation_stagger': args.animation_stagger is not None,
-        'animation_trigger': args.animation_trigger is not None,
+        'transition': (
+            args.transition is not None
+            or inherited_overrides.get('transition') is True
+        ),
+        'transition_duration': (
+            args.transition_duration is not None
+            or inherited_overrides.get('transition_duration') is True
+        ),
+        'auto_advance': (
+            args.auto_advance is not None
+            or inherited_overrides.get('auto_advance') is True
+        ),
+        'transition_sound': 'sound' in inherited_transition,
+        'animation': (
+            args.animation is not None
+            or inherited_overrides.get('animation') is True
+        ),
+        'animation_duration': (
+            args.animation_duration is not None
+            or inherited_overrides.get('animation_duration') is True
+        ),
+        'animation_stagger': (
+            args.animation_stagger is not None
+            or inherited_overrides.get('animation_stagger') is True
+        ),
+        'animation_trigger': (
+            args.animation_trigger is not None
+            or inherited_overrides.get('animation_trigger') is True
+        ),
+    }
+
+    deck_motion: dict[str, object] = {
+        'transition': {
+            'effect': transition,
+            'effect_options': transition_effect_options,
+            'duration': transition_duration,
+            'auto_advance': auto_advance,
+            'sound': transition_sound,
+        },
+        'animation': {
+            'effect': normalized_animation or 'none',
+            'effect_request': animation,
+            'duration': animation_duration,
+            'stagger': animation_stagger,
+            'trigger': animation_trigger,
+        },
+        'cli_overrides': animation_cli_overrides,
+        'narration_timings': use_narration_timings,
     }
 
     if args.recorded_narration:
@@ -1554,7 +1894,7 @@ Recorded narration:
     # are still stamped at export; only the authored fields stay blank.
     doc_metadata = None
     metadata_path = project_path / 'metadata.json'
-    if metadata_path.is_file() and not args.quick_test:
+    if metadata_path.is_file():
         try:
             loaded = json.loads(metadata_path.read_text(encoding='utf-8'))
         except (json.JSONDecodeError, OSError) as exc:
@@ -1581,6 +1921,7 @@ Recorded narration:
         verbose=verbose,
         transition=transition,
         transition_effect_options=transition_effect_options,
+        transition_sound=transition_sound,
         transition_duration=transition_duration,
         auto_advance=auto_advance,
         notes=notes,
@@ -1595,7 +1936,8 @@ Recorded narration:
         narration_audio=narration_audio,
         use_narration_timings=use_narration_timings,
         narration_padding=args.narration_padding,
-        merge_paragraphs=args.merge_paragraphs,
+        narration_start_floor=args.narration_start_floor,
+        text_flow=args.text_flow,
         image_optimize=not args.no_image_optimize,
         image_max_dimension=args.image_max_dimension,
         image_sizing=args.image_sizing,
@@ -1610,6 +1952,7 @@ Recorded narration:
         theme_font_spec=theme_font_spec,
         master_text_style_spec=master_text_style_spec,
         theme_color_spec=theme_color_spec,
+        primary_language=primary_language,
     )
 
     if verbose:
@@ -1678,31 +2021,6 @@ Recorded narration:
             print(f"  [info] svg_output/ not found, backup skipped")
 
     if success:
-        if args.quick_test:
-            try:
-                package = _validate_quick_test_output(
-                    native_path,
-                    expected_slide_count=len(native_files),
-                )
-            except PptxPostflightValidationError as exc:
-                print(
-                    "Error: quick-test PPTX failed in-memory validation and "
-                    f"must not be used: {exc}",
-                    file=sys.stderr,
-                )
-                print(
-                    f"  Invalid output remains at: {native_path}",
-                    file=sys.stderr,
-                )
-                return 1
-            if verbose:
-                print(
-                    "  [QUICK-TEST] "
-                    f"status=passed slides={package['slides']} "
-                    "sidecars=none"
-                )
-                print(f"  [PPTX] {native_path}")
-            return 0
         try:
             receipt = _write_postflight_report(
                 output_path=native_path,
@@ -1712,6 +2030,7 @@ Recorded narration:
                 pptx_structure=pptx_structure,
                 backup_path=backup_path,
                 conversion_trace_path=conversion_trace_path,
+                deck_motion=deck_motion,
             )
         except PptxPostflightValidationError as exc:
             print(

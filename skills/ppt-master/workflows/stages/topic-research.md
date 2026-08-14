@@ -1,12 +1,21 @@
 ---
-description: Generate Step 1 intake stage that fills externally verifiable factual gaps before Strategist confirmation.
+description: Generate source-intake stage that fills externally verifiable factual gaps before planning or direct SVG authoring.
 ---
 
 # Topic Research Stage
 
-> Strategist-owned factual preparation inside [`generate-pptx`](../generate-pptx.md) Step 1. Run immediately for topic-only input, or after supplied material is converted and read when it leaves planning-critical factual gaps. Output is a research supplement plus stable fact provenance for Step 2 import.
+> Factual preparation inside the active Generate profile's source intake.
+> Default Generate hands its output to Strategist; Quick Generate's main agent
+> consumes the same output. Run immediately for topic-only input, or after
+> supplied material is converted and read when it leaves planning-critical
+> factual gaps. Output is a research supplement plus stable fact provenance for
+> project import.
 
-This stage supplies facts needed to plan the requested deck. It does not select, download, or generate images; image selection belongs to the final Strategist plan, and AI / web / slice acquisition runs in Generate Step 5 after final confirmation.
+This stage supplies facts needed to build the requested deck. It does not select,
+download, or generate images. Default Generate resolves image selection in the
+final Strategist plan and acquires AI / web / slice assets after confirmation;
+Quick Generate resolves and acquires them later in its resource-preparation
+phase without adding a confirmation gate.
 
 ## When to Run
 
@@ -14,18 +23,25 @@ This stage supplies facts needed to plan the requested deck. It does not select,
 |---|---|
 | Topic or requirements with no supporting facts | Research the factual baseline needed for the requested outcome |
 | Supplied files or chat content cover only part of the requested outcome | After conversion and reading, research only the identified externally verifiable gaps |
-| Supplied material already supports the requested outcome | Skip this stage and continue Generate Step 1 |
+| Supplied material already supports the requested outcome | Skip this stage and continue the active Generate profile's source preparation |
 | User requires a closed corpus, source-only transformation, or no external enrichment | Skip this stage and keep planning within supplied material |
 
-**Sufficiency test**: a gap exists when the Strategist would otherwise need to invent, omit, or leave unsupported an externally verifiable claim required by the user's requested outcome. File presence, source length, and a generic topic taxonomy do not decide sufficiency.
+**Sufficiency test**: a gap exists when the active content owner would otherwise need to invent, omit, or leave unsupported an externally verifiable claim required by the user's requested outcome. File presence, source length, and a generic topic taxonomy do not decide sufficiency.
 
-**Hard rule — preserve supplied facts**: supplement the user's material; never silently replace it. Record a material source conflict for Strategist review instead of choosing a different claim without disclosure. Do not research omissions outside the requested scope.
+**Hard rule — preserve supplied facts**: supplement the user's material; never
+silently replace it. Record a material source conflict in the research output
+for the active content owner instead of choosing a different claim without
+disclosure. Do not research omissions outside the requested scope.
 
 ---
 
 ## Step 1: Define the gap brief
 
-⛔ **BLOCKING**: confirm only missing scope or research-boundary decisions as one bundled clarifier. Skip when the request and supplied material already make them clear.
+**Clarification boundary**: Default Generate bundles only genuinely missing
+scope or research-boundary decisions into one clarifier. Quick Generate applies
+the defaults below and continues without interaction; stop only when a required
+permission or safety boundary cannot be inferred responsibly. Skip clarification
+when the request and supplied material are already clear.
 
 | Item | Default if unspecified |
 |---|---|
@@ -35,16 +51,33 @@ This stage supplies facts needed to plan the requested deck. It does not select,
 | Research gaps | Only facts needed to support the requested outcome |
 | External-source boundary | External factual enrichment allowed; supplied facts remain authoritative inputs |
 | Output language | Match user input |
-| Target audience / communication intent | Use what is already explicit; leave final confirmation to the main Strategist stage |
+| Target audience / communication intent | Use what is explicit; Default leaves final confirmation to Strategist, while Quick resolves routine gaps in active context |
 | Research stem (`<research_slug>`) | `<topic_slug>_research`; choose another unused snake_case stem rather than overwrite an existing file |
 
-Do not repeat the full main-pipeline confirmation here. Generate Step 4 still confirms the complete communication contract and deck solution after the factual inputs are ready.
+Do not repeat the full default-pipeline confirmation here. Default Generate
+confirms the complete communication contract in Step 4; Quick Generate adds no
+confirmation stage.
+
+---
+
+## Execution Context
+
+**Default — isolated research when available**: The main agent owns the sufficiency decision and gap brief. When the current AI editor supports and permits an isolated subagent with web/fetch access and write access to the declared outputs, dispatch exactly one research worker. Otherwise the main agent runs Steps 2–3 locally.
+
+| Actor | Contract |
+|---|---|
+| Main agent | Supply the topic/outcome, baseline or relevant source paths, declared gaps, output language, two exact unused output paths, and this stage's absolute path as execution authority; use paths instead of pasting source bodies when possible |
+| Research worker | Read the supplied stage file completely, then follow Steps 2–3 using the brief and declared source paths as its baseline; limit project writes to the two output artifacts; acquire no images and make no deck-planning or design decisions |
+
+**Hard rule — isolate retrieval, not research**: Raw page content and fetch transcripts stay in the worker context. The 250-word limit applies only to its chat receipt: return `status`, exact artifact paths, covered/unresolved gap counts, external-fact count, and material conflicts. It does not cap or replace the two artifacts. After validation and import, the active content owner reads the complete imported research supplement and fact-provenance JSON into the main context before planning or direct SVG authoring; never use the receipt or validation summary as content.
+
+**Validation**: Before import, the main agent verifies both exact files exist, the Markdown contains `## Research Brief` and `## Sources`, the JSON parses with schema `ppt-master.fact-provenance.v1` and unique sequential IDs, and the two files agree. Return an invalid pair to the research worker for owning-artifact repair; use main-context web research only when isolated execution is unavailable.
 
 ---
 
 ## Step 2: Gather factual sources
 
-Use the web search and fetch tools supplied by the current IDE. If none are available, pause and ask the user for authoritative URLs covering the declared gaps, then fetch each with:
+Use the web search and fetch tools available in the active research context. An isolated worker without them returns `blocked: web-tools-unavailable`. If no usable research context has search/fetch tools, the main agent pauses and asks the user for authoritative URLs covering the declared gaps, then fetches each with:
 
 ```bash
 python3 ${SKILL_DIR}/scripts/source_to_md/web_to_md.py <URL>
@@ -63,7 +96,10 @@ python3 ${SKILL_DIR}/scripts/source_to_md/web_to_md.py <URL>
 | 3 | Reputable reporting or analysis when primary evidence is unavailable |
 | Avoid | Unsourced reposts, unverifiable summaries, and stock-aggregator pages |
 
-**Stop condition**: stop when every declared gap has enough sourced evidence for the Strategist to decide whether and how to include it. Do not expand into unrelated overview / history / outlook sections merely to make the research look complete.
+**Stop condition**: stop when every declared gap has enough sourced evidence for
+the active content owner to decide whether and how to include it. Do not expand
+into unrelated overview / history / outlook sections merely to make the
+research look complete.
 
 ---
 
@@ -105,18 +141,25 @@ IDs are immutable within the file. Correct a claim under the same ID; never reus
 
 ## Hand-off
 
-Import the research supplement and provenance alongside any user-supplied sources in Generate Step 2:
+Import the research supplement and provenance alongside any user-supplied
+sources through the active profile's source intake:
 
 ```bash
 python3 ${SKILL_DIR}/scripts/project_manager.py import-sources projects/<project_name> [<source_paths...>] projects/<research_slug>.md projects/<research_slug>.facts.json
 ```
 
-The Research Brief remains evidence-facing context, not a locked presentation contract. Strategist reads all imported source material, then confirms the complete contract and decides the content, page roster, and image resource plan. Generate Step 5 acquires only the selected image rows after that confirmation.
+The imported pair remains evidence-facing context, not a locked presentation
+contract. Default Generate has Strategist read both files completely before
+confirmation and use them to select the content, page roster, and image resource
+plan. Quick Generate has the current agent read both completely before its
+active-context content, design, and resource decisions.
 
 ```markdown
 ## ✅ Topic Research Complete
+- [x] Research execution: <isolated worker | main-context fallback>
 - [x] Research supplement: `projects/<research_slug>.md` (N declared gaps covered)
 - [x] Fact provenance: `projects/<research_slug>.facts.json` (N external facts)
-- [x] No images acquired before Strategist confirmation
-- [ ] **Next**: return to [`generate-pptx`](../generate-pptx.md) Step 1, then import all source artifacts in Step 2
+- [x] Artifact contract validated: `## Research Brief`, `## Sources`, `ppt-master.fact-provenance.v1`, unique sequential IDs, and Markdown/JSON agreement
+- [x] No images acquired inside this factual-research stage
+- [ ] **Next**: Default returns to [`generate-pptx`](../generate-pptx.md) Step 2; Quick returns to [`quick-generate`](../profiles/quick-generate.md) §2. Import all source artifacts, then fully read the imported research pair before planning or direct SVG authoring
 ```

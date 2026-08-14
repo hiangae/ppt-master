@@ -1,14 +1,20 @@
 ---
-description: Main-generation profile for 1:1, content-faithful re-layout of an existing deck through the standard SVG pipeline.
+description: Generate profile for 1:1, content-faithful re-layout of an existing deck through Default or explicit Quick execution.
 ---
 
 # Beautify PPTX (Re-layout) Profile
 
-> Main-pipeline profile, not a top-level route. [`template-fill-pptx.md`](../template-fill-pptx.md) reuses a deck's design and swaps in new content; this profile keeps a deck's content and redoes its layout.
+> Generate profile, not a top-level route. [`template-fill-pptx.md`](../template-fill-pptx.md) reuses a deck's design and swaps in new content; this profile keeps a deck's content and redoes its layout.
 
 Re-lays-out an existing `.pptx`: the text is preserved **verbatim**, the source deck's visual identity (palette / fonts) is **inherited as truth**, and only layout, hierarchy, and whitespace are redesigned. Output is a brand-new native deck generated through the standard SVG pipeline — not a patch over the original.
 
 **Trigger**: the user supplies a `.pptx` and asks to beautify / re-layout / 重新排版 / 美化 while keeping the content. Explicit intent + a provided file only; never auto-infer.
+
+**Hard rule — select one runtime before continuing**: when the same request
+also meets [`quick-generate.md`](./quick-generate.md)'s explicit trigger, load
+that runtime and do not load `generate-pptx.md`. Otherwise load
+[`generate-pptx.md`](../generate-pptx.md) and do not load Quick. The 1:1
+Beautify constraints in this file apply in either runtime.
 
 ---
 
@@ -22,11 +28,18 @@ Re-lays-out an existing `.pptx`: the text is preserved **verbatim**, the source 
 
 **Hard rule — content is frozen**: every text string from the source is preserved exactly (no add / remove / reword / reorder). Beautification freedom lives only in layout, hierarchy, spacing, and visual rhythm.
 
-**Hard rule — not a patch, not a fill**: this regenerates a native deck through Strategist → Executor → export ([`generate-pptx`](../generate-pptx.md) Steps 4–7). It does **not** edit the source file in place, and it is **not** [`template-fill-pptx`](../template-fill-pptx.md) (which clones source slides and replaces text). It also does not parse an arbitrary third-party template for text-only substitution (the rejected #53 direction) — it builds every page from scratch.
+**Hard rule — not a patch, not a fill**: this regenerates a native deck through the selected Default or Quick SVG → PPTX runtime. It does **not** edit the source file in place, and it is **not** [`template-fill-pptx`](../template-fill-pptx.md) (which clones source slides and replaces text). It also does not parse an arbitrary third-party template for text-only substitution (the rejected #53 direction) — it builds every page from scratch.
 
 **Distinct from mirror templates**: `replication_mode: mirror` ([`executor-structured.md`](../../references/executor-structured.md) §1.1) keeps layout + visuals verbatim and edits text. Beautify is the inverse — content verbatim, layout redone, identity inherited.
 
-**When this profile is wrong — re-architecture belongs to the default main pipeline**: this profile preserves the source's page count and page order 1:1. It is for "keep this deck, just lay it out better". When the user instead wants the original page breakdown reconsidered — merge / split / reorder pages, re-outline the structure, build a *better deck* from the same content rather than a prettier version of the same pages — do not activate this profile. This includes re-pagination for fit: "keep every word but split a crowded page so it reads better" changes page count. Convert the deck with [`ppt_to_md`](../../scripts/source_to_md/ppt_to_md.py) and run the default main pipeline, where the Strategist re-architects the outline freely from the extracted content. The deciding question: is the source's page split information to preserve, or just the previous author's structure to improve? Preserve → activate this profile; improve → default main pipeline.
+**Distinct from page-image reconstruction**: when the authoritative input is
+an ordered raster page roster and the user wants its visible layout preserved,
+activate the Codex-supported, Quick-only
+[`image-to-pptx.md`](./image-to-pptx.md) instead.
+Beautify requires a semantic source PPTX and deliberately redesigns layout; the
+two fidelity profiles never compose.
+
+**When this profile is wrong — re-architecture belongs to ordinary Generate**: this profile preserves the source's page count and page order 1:1. It is for "keep this deck, just lay it out better". When the user instead wants the original page breakdown reconsidered — merge / split / reorder pages, re-outline the structure, build a *better deck* from the same content rather than a prettier version of the same pages — do not activate this profile. This includes re-pagination for fit: "keep every word but split a crowded page so it reads better" changes page count. Convert the deck with [`ppt_to_md`](../../scripts/source_to_md/ppt_to_md.py) and use ordinary Quick when Quick was explicit, otherwise the Default main pipeline. The deciding question: is the source's page split information to preserve, or just the previous author's structure to improve? Preserve → activate this profile; improve → ordinary Generate in the selected runtime.
 
 ---
 
@@ -52,9 +65,17 @@ Match the canvas to the source so 1:1 pages and paste-back align. Determine the 
 | other | nearest format in [`canvas-formats.md`](../../references/canvas-formats.md); record the source pixel size in the spec |
 
 ```bash
+# Default runtime:
 python3 ${SKILL_DIR}/scripts/project_manager.py init <project_name> --format <format>
+
+# Quick runtime instead:
+python3 ${SKILL_DIR}/scripts/project_manager.py init <project_name> --format <format> --quick-generate
+
+# Both runtimes then import once:
 python3 ${SKILL_DIR}/scripts/project_manager.py import-sources <project_path> <source.pptx>
 ```
+
+Run exactly one `init` command: the Quick form only when Quick was selected.
 
 ---
 
@@ -83,13 +104,6 @@ python3 ${SKILL_DIR}/scripts/pptx_intake.py <project_path>/sources/<source.pptx>
 
 > Note: `theme` is what the deck declares; `observed` is a frequency sample of run-level overrides (not a complete style resolution — it misses `schemeClr` and master/layout inheritance, and counts chart/gradient fills). A hand-edited deck can diverge from `theme` — Step 5 recommends which to inherit and the user confirms.
 
-**Chart + table data (for regeneration)**: read `<project_path>/analysis/<stem>.slide_library.json`. It contains the source chart and table *data* so they can be redrawn natively in the inherited style:
-
-| `<stem>.slide_library.json` field | Use |
-|---|---|
-| `slides[].charts[]` (`chart_type` / `categories` / `series[].values`) | regenerate as a native SVG chart; use the §VII catalog key only when recall selects a real reference, otherwise plan the custom chart in §IX |
-| `slides[].tables[]` (`row_count` / `column_count` / cell text) | regenerate as a native SVG table |
-
 **Hard rule — regenerate visuals, do not carry them over**: charts / tables / images are rebuilt from their data in the inherited style, never spliced in byte-for-byte. This keeps the deck style-consistent and natively editable. **Data values are frozen** (categories / series / cell text / numbers unchanged); only their rendering is the deck's own. Pictures (`ppt_to_md`-extracted files) are reused but re-laid-out — position / crop / size follow the new layout, not the source slot. A user who wants an original element verbatim copies it across themselves.
 
 **Optional source-SVG visual reference**: when the source deck has complex vector decoration, distinctive page chrome, or a visual language that cannot be captured by `<stem>.identity.json` colors/fonts alone, create a read-only SVG reference package under `analysis/`. This is for understanding style only; it is not a carry-over asset path.
@@ -106,7 +120,13 @@ Use the cleaned `analysis/source_svg_import/svg-flat/slide_*.svg` files plus `an
 
 Default: do **not** copy these candidates into the project `icons/`, do **not** list them as reusable output assets, and do **not** preserve original vector decorations byte-for-byte in the beautified deck. The Executor still regenerates fresh native shapes from the confirmed plan.
 
-Optional reuse gate: if a candidate is a non-text brand/logo/motif/decorative asset that should survive the beautification, list it in the Step 5 plan with source slide, candidate filename, intended reuse, and dependency notes from the inventory. Wait for user confirmation. Only confirmed candidates may be promoted into `<project_path>/icons/imported/` and referenced from generated SVGs with `<use data-icon="imported/<name>"/>`; `finalize_svg.py` then re-inlines them as native shapes. Never promote text-bearing groups, charts/tables, source page layouts, or dense slide composites as reusable assets.
+**Optional reuse gate**: retain source slide, filename, use, and dependencies
+for a non-text brand/logo/motif/decorative candidate. Default lists it in Step 5
+and waits; only confirmed candidates are promoted. Quick's current main agent
+decides directly and stops only when frozen facts lack a lossless preservation
+path. Promote to `<project_path>/icons/imported/` and reference with
+`<use data-icon="imported/<name>"/>`; Quick never runs `finalize_svg.py`. Never
+promote text-bearing groups, charts/tables, page layouts, or dense composites.
 
 **Assemble the inventory** — the deterministic join into one per-slide ledger, `analysis/beautify_inventory.json`, the contract Step 5 confirms and Step 7 verifies against:
 
@@ -122,6 +142,21 @@ If `images/image_manifest.json` does not exist because the source deck has no ex
 | `ignored` | hidden slides / shapes, master-only text, image crop / opacity / rotation / mask (not captured upstream) |
 | `needs_confirmation` | unreadable SmartArt data; combo / dual-axis / waterfall charts; merged-cell or multi-header tables; density-outlier pages — **either** overcrowded **or** near-empty / title-only |
 
+**Mandatory — bounded inventory reads**: the complete inventory is the Step 7
+validation ledger, not the default authoring prompt. Read its compact roster,
+then the current page; add geometry only for structural ambiguity:
+
+```bash
+python3 ${SKILL_DIR}/scripts/beautify_inventory.py \
+  <project_path>/analysis/beautify_inventory.json --summary
+python3 ${SKILL_DIR}/scripts/beautify_inventory.py \
+  <project_path>/analysis/beautify_inventory.json --page <N>
+python3 ${SKILL_DIR}/scripts/beautify_inventory.py \
+  <project_path>/analysis/beautify_inventory.json --page <N> --with-geometry
+```
+
+During authoring, do not bulk-read either complete file.
+
 **SmartArt output boundary**: Preserve its extracted wording and semantic relationships, then redraw it through SVG as ordinary editable PowerPoint shapes. Do not attempt to regenerate a native SmartArt object or reuse persisted-drawing text as a second content source.
 
 ```markdown
@@ -132,22 +167,50 @@ If `images/image_manifest.json` does not exist because the source deck has no ex
 - [x] `analysis/<stem>.slide_library.json` holds chart + table data and SmartArt semantic structure for regeneration
 - [x] `analysis/source_profile.json` (multi-deck index) summarizes the source facts in its `decks[]` entry
 - [x] `analysis/beautify_inventory.json` ledgers per-slide text / images / data + ignored + needs-confirmation
-- [ ] **Next**: Step 5 — Beautify Plan (recommend & confirm)
+- [ ] **Next**: Step 5 — resolve Beautify decisions in the selected runtime
 ```
 
 ---
 
-## 5. Beautify Plan — Recommend & Confirm
+## 5. Beautify Decisions
 
-⛔ **BLOCKING**: the scope is not hard-coded — same spirit as the Strategist confirmation stage. Recommend each item below from what the deck actually contains (the Step 4 inventory), present the plan, and **wait for the user to confirm or adjust** before writing any spec. Chat is the canonical channel; the confirm UI below is the visual convenience surface over it for the palette + typography review (its result is honored identically to a chat reply).
+### Quick branch
+
+When Quick was selected, do not run the Default confirmation flow below. Apply
+the same inventory interpretation, source-identity judgment, and body-size
+method documented in this section, but make the decisions directly in the
+active context. Explicit user requirements remain authoritative; otherwise use
+the source identity as the default. Resolve `ignored` and `needs_confirmation`
+without creating a confirmation payload, Design Spec, lock, or substitute
+plan. If a flagged complex object cannot be regenerated without losing frozen
+facts, stop as a hard prerequisite instead of simplifying it.
+
+**Mandatory — close the transient Quick state before authoring**: before
+entering §6 and [`quick-generate.md`](./quick-generate.md) §3, resolve every
+row below in the active context:
+
+| Transient state | Required closure |
+|---|---|
+| Roster and message | Exact source-order roster and one core message per page |
+| Identity and type | Source identity, palette, fonts, body size, and type-role anchors |
+| Page geometry | Per-page density, body frame, primary zone, and composition direction |
+| Meaning and rhythm | Frozen relationships, reading path, neighbor/section rhythm, and ending |
+| Resources and capabilities | Required local resources are usable; triggered notes, motion, audio, image, icon, formula, Chart/Table, and verification outcomes are decided |
+
+Keep it transient: create no page/resource plan, Design Spec, lock,
+confirmation payload, or substitute artifact. Then continue to §6 Quick.
+
+### Default branch — Recommend & Confirm
+
+⛔ **BLOCKING**: the scope is not hard-coded — same spirit as the Strategist confirmation stage. Recommend each item below from what the deck actually contains (the Step 4 inventory), present the plan, and **wait for the user to confirm or adjust** before writing any spec. Use Generate Step 4's selected surface for the full visual confirmation; keep the structural-scope decisions in chat. Values confirmed through either channel are honored identically.
 
 This step has two halves:
-- **Visual re-confirm via the confirm UI** — the **full** Step 4 confirm page (below), seeded from the source so every targeted-confirmation field (canvas, mode, visual style, palette, icons, typography incl. body baseline, image strategy, generation mode) is **pre-filled with the inherited / source-derived default and left editable**. Beautify *recommends* keeping the source's identity, but never removes the user's place to override any field — you may choose not to change a value, but you must not deny the place to change it. This is also where the deck's text size is confirmed: `<stem>.identity.json` now carries size hints — `observed.sizes_pt` (the point sizes the deck actually renders at) and `theme.sizes` (the declared placeholder defaults) — so the `body_size` recommendation **follows the source's own font size** rather than a blind canvas default; the user still confirms or overrides it here.
+- **Visual re-confirm via the selected confirmation surface** — the **full** Step 4 field set (below), seeded from the source so every targeted-confirmation field (canvas, mode, visual style, palette, icons, typography incl. body baseline, image strategy, generation mode) is **pre-filled with the inherited / source-derived default and left editable**. Beautify *recommends* keeping the source's identity, but never removes the user's place to override any field — you may choose not to change a value, but you must not deny the place to change it. This is also where the deck's text size is confirmed: `<stem>.identity.json` now carries size hints — `observed.sizes_pt` (the point sizes the deck actually renders at) and `theme.sizes` (the declared placeholder defaults) — so the `body_size` recommendation **follows the source's own font size** rather than a blind canvas default; the user still confirms or overrides it here.
 - **Structural scope** — the inventory-driven list decisions below (ignored, reuse, needs-confirmation, verification level) stay in **chat**; they have no confirm-UI widget.
 
 | Plan item | Recommend from | Default lean |
 |---|---|---|
-| Identity source | `<stem>.identity.json` `theme` vs `observed` | present **both as color / typography candidates in the confirm UI** so the user picks the one that looks right (theme first when the deck is theme-driven; observed first when slides override heavily) — recommend a default ordering and say why |
+| Identity source | `<stem>.identity.json` `theme` vs `observed` | present **both as color / typography candidates in the selected confirmation surface** so the user picks the one that looks right (theme first when the deck is theme-driven; observed first when slides override heavily) — recommend a default ordering and say why |
 | Preserve scope | inventory `text_blocks` / `images` / `charts` / `tables` / `diagrams` | all text verbatim; data values and SmartArt relationships frozen; pictures reused |
 | Ignored | inventory `ignored` | name them so the user sees what drops (hidden / master-only text / image crop / rotation) |
 | Needs confirmation | inventory `needs_confirmation` | flag complex charts + overcrowded pages explicitly; ask how to handle |
@@ -163,12 +226,25 @@ This step has two halves:
 | Paste-back into the original | regenerated elements share the inherited palette + fonts, so they **blend visually** when pasted. v1 does **not** guarantee a seamless coordinate-level drop-in (slide coordinates, master placeholders, font availability are the original deck's, not ours) |
 | Complex charts / merged-cell tables | best-effort from the captured data; combo / dual-axis / waterfall lose the un-captured plots — flagged for the user |
 
-**Visual re-confirm — full confirm UI seeded from the source**:
+**Visual re-confirm — full confirmation seeded from the source**:
 
-Use the three `<project_path>/confirm_ui/recommendations.stageN.json` files at the same staged handoffs as [`generate-pptx`](../generate-pptx.md) Step 4 and launch the same confirm server. The active, unconfirmed stage may be overwritten for a requested regeneration; normal progression leaves confirmed earlier stages intact. Do **not** hide fields: seed **every** targeted-confirmation field with the inherited / source-derived default so the user sees the recommendation and keeps the place to change it. Schema → [`scripts/docs/confirm_ui.md`](../../scripts/docs/confirm_ui.md).
+Apply [`generate-pptx`](../generate-pptx.md) Step 4's surface decision first. In
+the default UI branch, use
+`<project_path>/confirm_ui/recommendations.stage1.json` and
+`recommendations.stage2.json` at the same two handoffs and launch the same
+confirm server. In the chat branch, present the same two stages and fields without launching the server or requiring
+`result.json`. The active, unconfirmed UI stage may be overwritten for a
+requested regeneration; normal progression leaves confirmed earlier stages
+intact. Do **not** hide fields: seed **every** targeted-confirmation field with
+the inherited / source-derived default so the user sees the recommendation and
+keeps the place to change it. Schema →
+[`scripts/docs/confirm_ui.md`](../../scripts/docs/confirm_ui.md).
+
+Rows are abbreviated; follow Confirm UI's four-locale contract and omit `english` for English sources.
 
 ```json
 {
+  "primary_language": "<source main language>",
   "recommend": {
     "canvas": "<step3-canvas-id>",
     "mode": "briefing",
@@ -190,31 +266,47 @@ Use the three `<project_path>/confirm_ui/recommendations.stageN.json` files at t
     { "name_zh": "备选配色 A", "name_en": "Alternative palette A", "name_ja": "代替配色A", "palette": { "background": "#...", "secondary_bg": "#...", "primary": "#...", "accent": "#...", "secondary_accent": "#...", "body_text": "#..." } }
   ] },
   "typography": { "selected": 0, "candidates": [
-    { "name_zh": "复刻源 PPT（推荐）", "name_en": "Source replica (recommended)", "name_ja": "元PPTを再現（推奨）", "heading": { "cjk": "...", "latin": "...", "css": "<PPT-safe stack>" }, "body": { "cjk": "...", "latin": "...", "css": "<PPT-safe stack>" }, "body_size": <dominant observed.sizes_pt × 4/3, as px> },
-    { "name_zh": "实际字体（observed）", "name_en": "Observed fonts", "name_ja": "実際のフォント（observed）", "heading": { "cjk": "...", "latin": "...", "css": "<PPT-safe stack>" }, "body": { "cjk": "...", "latin": "...", "css": "<PPT-safe stack>" }, "body_size": <dominant observed.sizes_pt × 4/3, as px> },
-    { "name_zh": "备选字体 A", "name_en": "Alternative pairing A", "name_ja": "代替ペアリングA", "heading": { "cjk": "...", "latin": "...", "css": "<PPT-safe stack>" }, "body": { "cjk": "...", "latin": "...", "css": "<PPT-safe stack>" }, "body_size": <canvas-appropriate baseline> }
+    { "name_zh": "复刻源 PPT（推荐）", "name_en": "Source replica (recommended)", "name_ja": "元PPTを再現（推奨）", "heading": { "primary": "...", "english": "...", "css": "<PPT-safe stack>" }, "body": { "primary": "...", "english": "...", "css": "<PPT-safe stack>" }, "body_size": <dominant observed.sizes_pt × 4/3, as px> },
+    { "name_zh": "备选字体 A", "name_en": "Alternative pairing A", "name_ja": "代替ペアリングA", "heading": { "primary": "...", "english": "...", "css": "<PPT-safe stack>" }, "body": { "primary": "...", "english": "...", "css": "<PPT-safe stack>" }, "body_size": <canvas-appropriate baseline> },
+    { "name_zh": "备选字体 B", "name_en": "Alternative pairing B", "name_ja": "代替ペアリングB", "heading": { "primary": "...", "english": "...", "css": "<PPT-safe stack>" }, "body": { "primary": "...", "english": "...", "css": "<PPT-safe stack>" }, "body_size": <canvas-appropriate baseline> }
   ] }
 }
 ```
 
 - **Recommend keep, allow override**: pre-fill the open communication contract from the source's apparent audience and purpose, preserving composite purposes in prose; also pre-fill canvas / mode / visual style / icons / image strategy with the source-faithful default (canvas = Step 3 format, mode = `briefing`, image_usage = `provided`). The purpose examples are hints, never a `primary_job` selector. Beautify's only true non-choices are frozen text and strict 1:1 page count (changing either means routing to the main pipeline). Seed `content_divergence` to verbatim preservation with `locked: true`; the Confirm UI renders it read-only and the server restores the locked value on every staged submit. A request to reshape wording or page structure routes to the main pipeline instead of weakening this profile.
 - **Our recommendation is the pre-selected default = the source replica**: for color and typography, author **several candidates** like the from-scratch flow. The pre-selected default (`selected: 0`, the first card) is what beautify recommends — the candidate that **best replicates the source deck's style** (the truest reading of `theme` / `observed`). Replicate-by-default.
-- **Judge the other alternatives exactly as the from-scratch flow does — fonts as much as colors**: don't invent a beautify-specific rule. Author each non-replica candidate with the **same content-driven judgment the Strategist uses when generating from scratch** (color §e, typography §g), applied to the material this project provides — the source document's content and subject, the company's own theme colors, and any brand signal. Pick the palette **and** the font pairing by what fits *this* deck's content; fonts are chosen by content fit, not just defaulted to a safe face. Reach **≥3 candidates total** (PPT-safe stacks; the same creative-choice rule used elsewhere) so a user who departs from the replica still lands on a considered, content-fitting direction — depart-by-choice.
-- **`body_size` is the load-bearing field, and the replica follows the source's own size**: seed the replica candidate's `body_size` from the source's actual body size — take the dominant `observed.sizes_pt` value (the most frequent run-level size, the **body proxy**) and **convert it to px (`× 4/3`)** before seeding, since the system is px-only and the source measures in pt: a source 20pt body becomes `26.67`px, so the replica renders at the source's true size (seeding the bare `20` as px would shrink it ~25% — the pt-as-px trap). Whichever source value you land on below (observed mode, or `theme.sizes.body`) gets the same `× 4/3` conversion. The confirm page (and chat fallback) then writes that px to `result.json` (`body_size`) **directly — no further conversion, no `body_size_pt` provenance** (pt never enters the contract). The "most frequent = body" read is a proxy, not a guarantee — `observed.sizes_pt` counts every explicit run size (titles, captions, footnotes, chart/label text included, no placeholder-type resolution), so a deck dense with small labels can let a caption size outrank true body; cross-check the proxy against the page's actual body blocks and the sanity range below before trusting it, and prefer the size the body paragraphs visibly render at over the raw mode when the two disagree. Fall back to `theme.sizes.body` (the declared placeholder size) when `observed.sizes_pt` is empty, and to a PPT consumption-mode baseline (`text` 20 / `balanced` 24 / `presentation` 32 px — one fixed value per mode) only when neither is present. Note `theme.sizes.body` is the master `bodyStyle` **level-1 declared default** — a coarse value that commonly **over-reads** the real body density (decks often render body at a deeper outline level or override it smaller), so when you land on this fallback treat it as an upper-ish guess and run it through the sanity check below, never as a precise body size. `theme.sizes.body_levels` and `layout_sizes_pt` are **reference context, not extra fallback tiers**: consult them to judge a saner body value when the deck is theme-driven (`observed` empty) — e.g. a deeper `body_levels` entry or a `layout_sizes_pt` hint may read truer than level-1 — but do not auto-seed from them; the seed chain stays `observed → theme.sizes.body → consumption-mode baseline`, and a theme-driven deck whose body size genuinely can't be pinned cleanly is exactly the case the sanity check is for. The canvas hint stays a **sanity range**, not the seed: if the source's own size lands far outside it (a dense source doc reads tiny on a projection canvas), surface that to the user rather than silently snapping — the replica recommendation is the source's size, the user confirms or overrides. Non-replica alternatives may use the consumption-mode baseline. This is what prevents the deck from exporting at an unintentionally small size while still honoring the source.
+- **Judge the other alternatives exactly as the from-scratch flow does — fonts as much as colors**: don't invent a beautify-specific rule. Author each non-replica candidate with the **same content-driven judgment the Strategist uses when generating from scratch** (color §e, typography §g), applied to the material this project provides — the source document's content and subject, the company's own theme colors, and any brand signal. Pick the palette **and** the font pairing by what fits *this* deck's content; fonts are chosen by content fit, not just defaulted to a safe face. Reach **≥3 meaningful candidates total**; reasonable font repetition is non-blocking, so never manufacture a different pairing just to satisfy a quota. `primary` always follows the source deck's main language; include `english` only when that language is not English.
+- **`body_size` is the load-bearing field, and the replica follows the source's own size**: seed the replica candidate's `body_size` from the source's actual body size — take the dominant `observed.sizes_pt` value (the most frequent run-level size, the **body proxy**) and **convert it to px (`× 4/3`)** before seeding, since the system is px-only and the source measures in pt: a source 20pt body becomes `26.67`px, so the replica renders at the source's true size (seeding the bare `20` as px would shrink it ~25% — the pt-as-px trap). Whichever source value you land on below (observed mode, or `theme.sizes.body`) gets the same `× 4/3` conversion. The confirm page writes that px to `result.json` (`body_size`); the chat branch retains the same px in its visible final summary. Neither path performs another conversion or adds `body_size_pt` provenance (pt never enters the contract). The "most frequent = body" read is a proxy, not a guarantee — `observed.sizes_pt` counts every explicit run size (titles, captions, footnotes, chart/label text included, no placeholder-type resolution), so a deck dense with small labels can let a caption size outrank true body; cross-check the proxy against the page's actual body blocks and the sanity range below before trusting it, and prefer the size the body paragraphs visibly render at over the raw mode when the two disagree. Fall back to `theme.sizes.body` (the declared placeholder size) when `observed.sizes_pt` is empty, and to a PPT consumption-mode baseline (`text` 20 / `balanced` 24 / `presentation` 32 px — one fixed value per mode) only when neither is present. Note `theme.sizes.body` is the master `bodyStyle` **level-1 declared default** — a coarse value that commonly **over-reads** the real body density (decks often render body at a deeper outline level or override it smaller), so when you land on this fallback treat it as an upper-ish guess and run it through the sanity check below, never as a precise body size. `theme.sizes.body_levels` and `layout_sizes_pt` are **reference context, not extra fallback tiers**: consult them to judge a saner body value when the deck is theme-driven (`observed` empty) — e.g. a deeper `body_levels` entry or a `layout_sizes_pt` hint may read truer than level-1 — but do not auto-seed from them; the seed chain stays `observed → theme.sizes.body → consumption-mode baseline`, and a theme-driven deck whose body size genuinely can't be pinned cleanly is exactly the case the sanity check is for. The canvas hint stays a **sanity range**, not the seed: if the source's own size lands far outside it (a dense source doc reads tiny on a projection canvas), surface that to the user rather than silently snapping — the replica recommendation is the source's size, the user confirms or overrides. Non-replica alternatives may use the consumption-mode baseline. This is what prevents the deck from exporting at an unintentionally small size while still honoring the source.
 
-```bash
-python3 ${SKILL_DIR}/scripts/confirm_ui/server.py <project_path> --daemon --wait
-```
+Run Generate Step 4's confirmation orchestration unchanged, including its
+pre-launch surface decision and the UI branch's pre-wait Stage-1 chat handoff.
 
-After the final wait returns, read `<project_path>/confirm_ui/result.json` exactly once and retain the complete confirmed object through Design Spec authoring. Chat is the canonical fallback when the page cannot open (remote / headless) — present the same fields in chat and retain the reply identically. Always run `--shutdown` on exit (page-confirm or chat-fallback) so port 5050 is free for Step 6 live preview.
+In the UI branch, after the final wait returns, read
+`<project_path>/confirm_ui/result.json` exactly once. In the chat or delegated
+branch, retain the visible final summary instead and require no UI result. After
+any launched UI path, run `--shutdown` before Step 6; do not assume `5050`.
 
-On confirmation, enter [`generate-pptx`](../generate-pptx.md) Step 4 as Strategist with the plan pre-resolved. The two beautify invariants always hold: the content-faithful clause ([`strategist.md`](../../references/strategist.md) §d Layer 1) and page count = source slide count (strict 1:1). Write the retained confirmed object completely into `design_spec.md` — `mode` (recommended `briefing`), canvas, `visual_style`, color (e) + typography (g) incl. `body_size` (the reviewed values; skip both recommendation flows) — honoring whatever the user kept or overrode. Do not reopen `result.json` afterward. §VII contains only `Page | Template | Usage` rows for selected catalog references; unmatched chart/table plans stay in their §IX page blocks. §VIII contains source pictures for re-layout.
+On confirmation, enter [`generate-pptx`](../generate-pptx.md) Step 4 as Strategist with the plan pre-resolved. The two beautify invariants always hold: the content-faithful clause ([`strategist.md`](../../references/strategist.md) §d Layer 1) and page count = source slide count (strict 1:1). Write the retained final confirmation state completely into `design_spec.md` — `mode` (recommended `briefing`), canvas, `visual_style`, color (e) + typography (g) incl. `body_size` (the reviewed values; skip both recommendation flows) — honoring whatever the user kept or overrode. Do not reopen UI evidence afterward. §VII contains only `Page | Family | Template | Usage` rows for selected `chart` or `table` catalog references; project their family-qualified keys into `spec_lock.md` `page_visualizations`. Qualitative relationships and unmatched Chart/Table plans stay in §IX; Default/Quick makes the mandatory per-page Structure decision before geometry. §VIII contains source pictures for re-layout.
 
 **Hard rule — §IX is verbatim and 1:1**: each source slide becomes exactly one page, in source order, its text transcribed word-for-word from `sources/<stem>.md`. Do not merge, split, drop, or rewrite. Complete and audit `design_spec.md` first, then author `spec_lock.md` from that Design Spec plus the source/page/template context per `strategist.md` §6 before handing off to the Executor.
 
 ---
 
-## 6. Executor + Export
+## 6. Author + Export
+
+**Quick**: follow [`quick-generate.md`](./quick-generate.md) §3–4. The
+Beautify inventory is the exact page roster and frozen-content contract; keep
+its source order, hand-author every page, run the lockless Quick final checker,
+and export with `--quick-generate`. Do not run Confirm UI, write a Design Spec
+or lock, run the Default first-page gate, or call `finalize_svg.py`.
+
+**Quick — lightweight long-deck review cadence (may adapt for a short deck or
+semantic boundary)**: after about five pages or at a section
+boundary, reread only the inventory summary/current-page views and cross-page
+anchors. Do not run a checker; this is neither a gate nor an approval stop. Send
+one `authored/total` status after each batch.
+
+**Default**: run the standard pipeline as follows.
 
 Run the standard pipeline ([`generate-pptx`](../generate-pptx.md) Steps 6–7). The Executor re-lays-out each page — hierarchy, spacing, alignment, page rhythm — using the semantic anchors in `spec_lock.md` plus current page/source/template context; valid page-local colors, gradients, effects, and export-safe display faces need not be added to the lock. It regenerates charts / tables as native SVG from the extracted data and re-lays-out the source pictures.
 
@@ -243,7 +335,7 @@ python3 ${SKILL_DIR}/scripts/source_to_md/ppt_to_md.py <project_path>/exports/<o
 
 - [x] Content + data values verbatim (read-back Markdown matches the source)
 - [x] 1:1 page count preserved
-- [x] Source colors + fonts inherited as locked truth
+- [x] Source-derived or explicitly overridden colors + fonts applied consistently
 - [x] Charts / tables regenerated as native SVG in the inherited style
 - [x] Native PPTX exported to `exports/`
 ```

@@ -16,6 +16,7 @@ This route treats a `.pptx` as the artifact to preserve. It archives the source 
 |---|---|
 | Source file | If already under `projects/`, move it into the enhancement project; otherwise copy it |
 | Visible slides | Do not rewrite existing text, shapes, images, charts, tables, masters, or layouts |
+| Existing hyperlinks | Preserve hyperlink XML and relationships unchanged |
 | Route | Direct PPTX package patching; no SVG conversion |
 | Output | A new `.pptx` under `<project>/exports/` |
 | Project kind | `native_pptx_enhancement` |
@@ -50,10 +51,10 @@ source.pptx
 |---|---:|---|
 | `narration.notes` | Enabled | Add or replace speaker notes generated from slide content |
 | `narration.audio` | Enabled | Embed one audio file per slide |
-| `narration.timings` | Enabled | Set narrated slides to auto-advance by audio duration |
+| `narration.timings` | Enabled | Set narrated slides to auto-advance from page-start lead-in, audio duration, and page-tail padding |
 | `narration.transitions` | Enabled | Add page-level transitions for narrated/selected slides |
 | `delivery.check` | Enabled | Read-only package/font/media/hidden-slide/file-size and existing-motion audit |
-| `media` | Planned | Background music, video, media compression |
+| `delivery.compress` | Planned | Reduce embedded media size for oversized packages; the audit above already reports them |
 | `presenter` | Planned | Q&A notes, speaker cues, rehearsal artifacts |
 | `animation` | Planned | Explicit object-level animation only |
 | `visible-stamp` | Planned | Watermark/footer/logo; requires explicit confirmation |
@@ -125,19 +126,29 @@ If the project already existed or notes/audio coverage changed, refresh the draf
 python3 skills/ppt-master/scripts/native_enhance_pptx.py plan "<project>"
 ```
 
-Refresh preserves user-owned module enablement, timing padding, global transition settings, and `transitions.slides`; it recomputes file presence/coverage, resets the plan to `draft`, and requires confirmation again. Audio coverage in the plan is explicitly `decodability: unchecked`; `validate` owns the ffprobe gate. CLI flags override only fields explicitly supplied.
+`plan` preserves module settings, refreshes coverage, and emits a
+reconfirmation `draft`. It changes `audio.enabled: true` /
+`notes.enabled: false` to `notes.enabled: true`; `validate`/`apply` reject the
+old state. Audio remains unchecked until `validate` runs ffprobe. Supplied CLI
+flags override.
 
 Present the plan to the user before generating notes or audio:
 
 | Module | Recommended default | Confirmation question |
 |---|---|---|
-| `notes` | Enabled | Add/replace speaker notes generated from slide content? |
-| `audio` | Enabled when user wants narration/video/autoplay | Generate one narration audio file per slide? |
-| `timings` | Enabled with audio | Set slide auto-advance from audio duration? |
+| `notes` | Enabled; required whenever audio is enabled | Add/replace speaker notes generated from slide content? |
+| `audio` | Enabled when user wants narration/video/autoplay | After notes are complete, generate one narration audio file per slide? |
+| `timings` | Enabled with audio; 0.8s page-start floor and 0.4s page-tail padding | Set slide auto-advance from narration timing? |
 | `transitions` | Enabled, `fade` 0.5s | Add page transitions? Which canonical native effect, Effect Options, and duration? |
 | `delivery.check` | Always on, read-only | No confirmation required; review errors and advisories |
 
 **⛔ BLOCKING**: Stop here and wait for explicit user confirmation. Do not generate notes, generate audio, or patch the PPTX until the user confirms the module plan.
+
+**Hard dependency — notes before audio**: Confirming `audio.enabled: true`
+also requires `notes.enabled: true`. If complete per-slide notes do not already
+exist, run Step 6 and generate them before entering audio configuration or
+audio generation. Never generate narration directly from slide text or bypass
+the notes artifact.
 
 **Transition/timing ownership**:
 
@@ -146,8 +157,20 @@ Present the plan to the user before generating notes or audio:
 | Transitions enabled with an effect | Replace with that exact effect and duration | Preserve unless timings is enabled |
 | Transitions disabled with a non-`none` configured effect | Preserve the source effect, including unknown `AlternateContent` | Preserve unless timings is enabled |
 | Explicit `none` | Remove the visual effect | Preserve, or write timing-only advance when timings is enabled |
-| Timings enabled with audio | Keep the resolved enter policy | Use audio duration plus narration padding; click disabled |
-| Timings disabled | Apply the confirmed enter policy only | Audio readiness may probe decodability; do not use duration or add/change `advTm` or `useTimings` |
+| Timings enabled with audio | Keep the resolved enter policy | Use page-start lead-in plus audio duration plus page-tail padding; click disabled |
+| Timings disabled | Apply the confirmed enter policy only | Use duration only to reject source auto-advance that would truncate narration; do not derive, add, or change `advTm` / `useTimings` |
+
+The timing module's `narration_start_floor` and `narration_padding` are
+independent optional values. When omitted, use `0.8` and `0.4` seconds
+respectively. For a destination-page transition of `T` seconds, the
+post-transition lead-in is
+`max(0, narration_start_floor - T)`: narration does not begin during the
+transition, and the transition duration itself remains unchanged. A start
+floor of `0` means start immediately after the transition completes. A
+preserved legacy transition that exposes only `spd` has no exact millisecond
+duration; keep the full configured floor after that transition instead of
+guessing a PowerPoint-specific duration. When timings are disabled, preserve
+source `advTm`, but fail if it would advance before the delayed narration ends.
 
 The confirmed `modules.transitions` object may include `effect_options` beside
 an explicit canonical `effect`. Use
@@ -188,11 +211,12 @@ the 1-based `index` in `analysis/slide_index.json`:
 | `effect: none` | Remove the visual transition; timings remain independently owned |
 | `effect: preserve` | Preserve the source visual transition; narration timing may still update advance |
 
-An explicit `slides` entry selects a page even when it has no audio and
-`apply_without_audio` is false. With `transitions.enabled: false`, only listed
-pages opt in; unlisted pages preserve their source transition. Morph uses
-PowerPoint's automatic matching only—this route does not rename native objects
-to create deterministic pairs.
+A `slides` entry always selects that page. Without audio, enabled global effects
+and explicit global `none` apply deck-wide; `apply_without_audio` is ignored.
+With audio, the flag extends the global policy from narrated to all pages.
+Disabled non-`none` effects preserve unlisted pages. Morph uses PowerPoint
+automatic matching; this route does not rename native objects for deterministic
+pairs.
 
 **Hard rule — no silent downgrade**: a requested native effect must be written with its complete validated Effect Options. Unknown effects or inapplicable options fail; unknown source effects are preserved when the transition module is disabled.
 
@@ -241,10 +265,12 @@ Write:
 Run coverage check:
 
 ```bash
-python3 skills/ppt-master/scripts/native_enhance_pptx.py validate "<project>"
+python3 skills/ppt-master/scripts/native_enhance_pptx.py validate "<project>" --materials notes
 ```
 
-> Note: missing, empty, unreadable, or undecodable requested material returns exit code `2`. Package, source-drift, plan/module, or duplicate native-enhance narration-carrier errors return `1`.
+> Note: This keeps source/plan/transition/carrier checks but does not require
+> audio. Missing/invalid notes return `2`; structural/semantic errors return
+> `1`. Step 8 runs full validation after audio.
 
 ---
 
@@ -270,7 +296,8 @@ Record the confirmed config into `project.json`:
 
 ## 8. Run the Shared Audio Stage
 
-🚧 **GATE**: Step 7 confirmed; notes files exist under `<project>/notes/`.
+🚧 **GATE**: Step 7 confirmed; complete non-empty notes files exist under
+`<project>/notes/` for every slide.
 
 Run [`generate-audio`](./stages/generate-audio.md) Step 4 with `<project>` and the confirmed values. Stop after audio generation; do not run its Generate-PPTX-only `svg_to_pptx.py --recorded-narration` integration. This route integrates audio through Step 9 instead.
 
@@ -300,15 +327,15 @@ Optional:
 python3 skills/ppt-master/scripts/native_enhance_pptx.py apply "<project>" \
   --transition fade \
   --transition-duration 0.5 \
+  --narration-start-floor 0.8 \
   --narration-padding 0.4 \
   --apply-transition-without-audio \
   --overwrite
 ```
 
-Without `--apply-transition-without-audio` (or the matching confirmed-plan
-field), the resolved enter policy is applied while processing slides with
-audio; slides without audio keep their source transition unless explicitly
-listed in `modules.transitions.slides`.
+`--apply-transition-without-audio` matters only with audio enabled: it extends
+the global enter policy from narrated slides to all slides. Explicit slide
+entries always opt in. Without audio, enabled transitions apply to every slide.
 
 `apply` reruns the same source/readiness/plan checks as `validate`. Enabling
 audio always requires every selected file to be decodable by ffprobe; enabling
@@ -334,7 +361,9 @@ Patch scope:
 | `ppt/presProps.xml` | `showPr useTimings=1` only when this run writes automatic slide advance |
 | `[Content_Types].xml` | Required content types |
 
-**Hard rule**: Do not modify existing slide shapes, text bodies, images, chart data, master/layout parts, or existing non-target relationships.
+**Hard rule**: Do not modify existing slide shapes, text bodies, images, chart
+data, master/layout parts, hyperlink XML/relationships, or existing non-target
+relationships.
 
 Before publishing the candidate, apply validates transitions, timing/object
 animation structure, ZIP integrity, unique parts, internal relationships,
@@ -363,7 +392,7 @@ Check:
 | Visible content | No intentional changes |
 | Notes | Present on intended slides |
 | Audio media | Present under `ppt/media/` when generated |
-| Auto-play | Narrated slides advance by audio duration |
+| Auto-play | Narrated slides wait for the resolved page-start lead-in, then advance after audio duration plus page-tail padding |
 | Transition | Requested effect remains exact; preserved `AlternateContent` keeps its primary and fallback branches |
 | Timings disabled | Source `advTm` and package `useTimings` are not changed |
 | Delivery check | No newly introduced structural errors; source baseline and font/media/hidden-slide advisories reviewed |

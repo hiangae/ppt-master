@@ -18,7 +18,10 @@ sidecar schema, anchor rules, and package validation live in the
 | Page transition | `fade`, 0.4 seconds | Slides change with a restrained visual transition |
 | Element object animation | **`none` (off)** | Each slide appears as a complete page; opt in only when motion helps the presentation |
 
-Changing animation settings does not require regenerating the slides. Rerun `svg_to_pptx.py` against the same `svg_output/`.
+Changing animation settings does not require regenerating the slides. Reuse the
+same `svg_output/`; default release export still requires its current passing
+final SVG quality report. When no current matching passing final report exists,
+run the final checker and resolve its blockers before rerunning `svg_to_pptx.py`.
 
 ## Common Recipes
 
@@ -30,12 +33,29 @@ Changing animation settings does not require regenerating the slides. Rerun `svg
 | Auto-advance every 5 seconds | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --auto-advance 5` |
 | Enable automatic element reveals | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto` |
 | Use one entrance effect throughout | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation entrance_fade` |
-| Use one native emphasis effect | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation emphasis_spin` |
-| Use one native motion path | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation path_circle` |
-| Use one native exit effect | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> --animation exit_fade` |
 | Reveal elements on click | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto --animation-trigger on-click` |
 | Animate all elements together | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto --animation-trigger with-previous` |
 | Slow the reveal sequence | `python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto --animation-duration 0.5 --animation-stagger 0.8` |
+
+## Choose a Page Transition
+
+| Relationship between adjacent slides | Start with |
+|---|---|
+| Ordinary continuation within one section | `fade` |
+| Immediate change with no continuity to preserve | `none` or `cut` |
+| Directional steps, timeline, or visible layer progression | `push`, `wipe`, `cover`, or `uncover` with a meaningful direction |
+| The same object or scene changes position, size, crop, or appearance | `morph` |
+| Section opening, key reveal, or marked state boundary | A selective `split`, `reveal`, `shape`, `flash`, or `random_bars` |
+| A repeated collection advances through one spatial frame | `pan`, `conveyor`, or `ferris_wheel`; use Morph when individual objects must retain identity |
+| The viewpoint travels around or through a continuous space | `rotate`, `window`, `orbit`, or `fly_through` |
+| The theme supports a stage, paper, or physical-page metaphor | A selective `fall_over`, `drape`, `curtains`, `wind`, `prestige`, `peel_off`, `page_curl`, `airplane`, `origami`, or `doors` |
+| A disruptive beat represents breakage, collapse, or dispersal | A selective `fracture`, `crush`, `dissolve`, `vortex`, or `shred` |
+| A marked reveal benefits from a geometric, timed, or textured pattern | A selective `checkerboard`, `blinds`, `clock`, `ripple`, `honeycomb`, `glitter`, or `comb` |
+| A card, panel, gallery, or viewpoint visibly turns or changes face | A selective `switch`, `flip`, `gallery`, `cube`, `box`, or `zoom` |
+
+Keep `fade` or `none` when no other transition adds meaning. Do not change
+effects merely to create variety; `random` is appropriate only when
+unpredictability is itself intentional.
 
 The 48 canonical transition keys cover all three sections in the current
 PowerPoint gallery:
@@ -75,22 +95,25 @@ an explicitly configured auto-advance timer.
 
 `--recorded-narration` does not support `on-click`; use `after-previous` or `with-previous` for narrated or video-ready output.
 
-## Choose an Effect
+## Choose an Object Animation
 
-| Choice | Use it when |
-|---|---|
-| `auto` | You want PPT Master to choose suitable effects from each content group's role; this is the recommended opt-in |
-| A native `entrance_*` key | You want one of PowerPoint's 53 native entrance presets |
-| A native `emphasis_*` key | An already visible object should draw attention or change appearance |
-| A native `path_*` key | An object should follow one of PowerPoint's 64 motion paths |
-| A native `exit_*` key | An object should leave the slide during the sequence |
-| `mixed` | You need the compatible deterministic mode over canonical PowerPoint presets |
-| `random` | You want deterministic variation from the same canonical preset pool |
-| `none` | You want to disable element animation |
+Start with `none`. When object motion has a communication job, choose its
+lifecycle before its visual effect:
+
+| Communication job | Choice | Boundary |
+|---|---|---|
+| Reveal information in reading or narration order | `auto` or a native `entrance_*` key | This is the usual object-animation case |
+| Redirect attention to an already visible object | An explicit `emphasis_*` key | Do not use it as the object's first reveal |
+| Show meaningful spatial or causal movement | An explicit `path_*` key, or Morph across adjacent slides | The path itself should carry meaning; deliberate background ambience is an advanced exception |
+| Remove, replace, or make room for content on the same slide | An explicit `exit_*` key | A normal slide change already removes the old page |
+| Add deterministic or seeded variation to generic entrances | `mixed` or `random` | These modes still select entrance effects only |
+| No clear motion task | `none` | Keep the slide static |
 
 The canonical registry contains 203 PowerPoint-native keys: 53 entrance, 33
 emphasis, 64 motion path, and 53 exit presets. New selections, sidecars,
 automatic choices, traces, and examples use these category-qualified keys.
+`auto`, `mixed`, and `random` select entrances only. Use an explicit canonical
+key for emphasis, motion-path, or exit behavior.
 The 29 established short names remain accepted only as compatibility inputs;
 they normalize before writing and do not retain a second behavior engine.
 Old Fly direction names all normalize to `entrance_fly`, and old Wipe
@@ -101,28 +124,130 @@ spokes. Run
 categorized list. The four media playback commands are handled by the
 audio/video workflows because they require media or bookmark targets.
 
-## Customize Specific Objects
+## Add Sound After Choosing Motion
 
-Use `animations.json` only when deck-wide settings are not enough—for example, title first, chart second, conclusion last. The easiest path is to generate a complete scaffold from the actual slide groups, edit it, validate it, and export:
+Sound effects are off by default. PPT Master includes a global CC0 discovery
+library, but it is not copied during strategy or ordinary project setup. First
+finish the SVG pages and choose the visual transition/object motion. Only when
+one of those resolved beats has a specific auditory job should you discover and
+sync a cue:
 
 ```bash
-python3 skills/ppt-master/scripts/animation_config.py scaffold <project>
+python3 skills/ppt-master/scripts/sound_sync.py list --query whoosh
+python3 skills/ppt-master/scripts/sound_sync.py \
+  <project> bigsoundbank/1797 kenney-interface/click_001
+```
+
+The second command copies only the selected files into
+`<project>/sounds/<namespace>/`. With no selected cue, PPT Master creates no
+project sound directory and copies nothing. The `recommended` catalog flag is
+a discovery shortlist, not an automatic choice:
+
+```bash
+python3 skills/ppt-master/scripts/sound_sync.py list --query recommended
+```
+
+Configuration always references the copied project-local path, never the
+global `templates/sounds/` path or a library id:
+
+```json
+{
+  "version": 1,
+  "slides": {
+    "02_process": {
+      "transition": {
+        "effect": "push",
+        "sound": "sounds/bigsoundbank/1797.wav"
+      },
+      "groups": {
+        "next-step": {
+          "effect": "entrance_fade",
+          "sound": "sounds/kenney-interface/click_001.wav"
+        }
+      }
+    }
+  }
+}
+```
+
+`transition.sound` uses WAV. Object-animation `sound` also accepts an existing
+project-relative or absolute `.m4a`, `.mp3`, or `.wav` input; bundled choices
+are WAV and should use the copied project-relative path. A transition-only cue
+may use a sparse `animations.json`; a slide-level `transition.sound: null`
+clears an inherited default sound. Validate before export. Do not add sound
+merely to demonstrate that the feature exists.
+
+This validation proves the editable PPTX contains the native cue; it does not
+prove PowerPoint's MP4 audio track contains it. For direct narrated video with
+resolved cues, follow [Audio Narration & Video Export](./audio-narration.md)
+and choose either the verified native-export sound mix or an explicit
+PowerPoint slideshow capture with system audio. Do not combine the two paths.
+
+## Customize Specific Objects
+
+Use `animations.json` only when deck-wide settings are not enough—for example,
+one object entering, moving, drawing attention, and then leaving. List the real
+groups, write sparse overrides for only the affected slides and objects,
+validate, and export. `scaffold` is an optional neutral editing starter: it
+sets the default object effect to `none`, and untouched `{}` group entries do
+not enable animation.
+
+```bash
+python3 skills/ppt-master/scripts/animation_config.py list-groups <project>
 python3 skills/ppt-master/scripts/animation_config.py validate <project>
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project>
 ```
 
-The generated sidecar targets stable top-level `<g id="...">` content groups. Common per-object fields are:
+The sidecar targets stable top-level `<g id="...">` content groups. A group ID
+is a PowerPoint shape-target anchor, not an Animation Pane row. The compatible
+single-effect object still creates one row; an `effects[]` array can create
+several ordered rows that all target the same shape:
+
+```json
+{
+  "version": 1,
+  "slides": {
+    "03_threshold": {
+      "animation": { "trigger": "after-previous" },
+      "groups": {
+        "risk-marker": {
+          "effects": [
+            { "effect": "entrance_fade", "order": 1, "duration": 0.25 },
+            { "effect": "path_right", "order": 2, "delay": 0.1, "duration": 0.7 },
+            { "effect": "emphasis_teeter", "order": 3, "trigger": "with-previous", "duration": 0.45 },
+            { "effect": "exit_fade", "order": 4, "trigger_shape": "details-button", "duration": 0.3 }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+A populated group uses either the legacy single-effect fields or the
+`{ "effects": [...] }` form, never both. `effects` must be non-empty, and every
+row names an explicit `effect`. Existing single-effect sidecars remain fully
+compatible.
+
+Common row fields are:
 
 | Field | Purpose |
 |---|---|
-| `effect` | Override the object effect; use `none` to keep that object static |
-| `order` | Change reveal order without changing slide layer order |
-| `delay` | Add a pause in `after-previous`, or after clicking `trigger_shape` |
-| `duration` | Override that object's scheduled animation duration |
+| `effect` | Select one explicit effect; the legacy form may use `none` to keep that object static |
+| `trigger` | Override this row's Start mode; otherwise inherit the slide animation trigger |
+| `order` | Order ordinary rows across the slide without changing slide layers; trigger-shape rows remain in separate interactive sequences |
+| `delay` | Add a pause to this row's resolved Start behavior |
+| `duration` | Override this row's scheduled animation duration |
 | `effect_options` | Set effect-specific `direction`, `amount`, `color`, `font_name`, `relative`, or `size` |
 | `trigger_shape` | Trigger this row when another top-level group is clicked (PowerPoint **On Click of**) |
 | Timing modifiers | `repeat_count`/`repeat_duration`, `auto_reverse`, `rewind`, `accelerate`, `decelerate`, `bounce_end`, and `restart` |
-| Completion | `after_effect` (dim/hide) and a `.m4a`/`.mp3`/`.wav` `sound` path |
+| Completion | `after_effect` (`none`, dim, hide, or hide on next click) |
+| Sound cue | Optional project-local `sound` path; bundled choices follow the on-demand sync above |
+
+`order`, `delay`, `duration`, `trigger`, and `trigger_shape` are resolved per
+row. The slide-level animation trigger is inheritance only. `trigger_shape`
+implies `on-click`; if the row also declares `trigger`, it must be
+`on-click`.
 
 Use `python3 skills/ppt-master/scripts/pptx_animations.py --describe
 <canonical_effect>` to see exactly which options that effect accepts. Speed is
@@ -130,9 +255,9 @@ controlled by `duration`; smooth start/end are controlled by
 `accelerate`/`decelerate`. Change Font's `font_name` is one concrete
 target-installed PowerPoint face, never a CSS font stack.
 
-`trigger_shape` is group-only and points to a different group id on the same
-slide. It affects only that row; the slide Start mode still controls all other
-rows. Recorded narration rejects interactive trigger-shape animations.
+`trigger_shape` points to a different group id on the same slide and affects
+only its row. Recorded narration rejects any row that resolves to `on-click`,
+including trigger-shape rows.
 
 When a user asks the AI to tune individual objects, use the [`customize-animations`](../skills/ppt-master/workflows/stages/customize-animations.md) stage. The full sidecar schema and target-validation rules remain in the [animation execution reference](../skills/ppt-master/references/animations.md).
 
@@ -142,8 +267,9 @@ PPT Master validates animation settings strictly: unknown effects or Start modes
 
 | Boundary | User-facing consequence |
 |---|---|
-| Animation target | Element animation operates on logical top-level content groups, not every SVG atom |
+| Animation target | Element animation operates on logical top-level content-group anchors; one anchor may own several Animation Pane rows |
 | Static structure | Backgrounds, Master/Layout content, placeholders, and page chrome remain static |
+| Unsupported object builds | No paragraph/text-range builds, custom freeform motion-path authoring, native Chart/SmartArt build sequencing, or media playback commands are inferred from grouped SVG content |
 | Output route | Animation exists in the native PPTX generated from `svg_output/`; `svg_final/` is a static preview |
 | Existing PPTX routes | Template Fill and Native Enhance preserve source object animation rather than translating it into this generated-deck model |
 | Playback compatibility | Microsoft PowerPoint desktop is the primary validation target; Keynote, WPS, LibreOffice, and older Office versions may remap or omit individual effects |

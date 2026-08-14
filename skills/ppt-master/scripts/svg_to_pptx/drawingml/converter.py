@@ -12,6 +12,11 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 from native_payloads import NativePayloadError, hydrate_native_payload_refs
+from hyperlink_contract import (
+    SHAPE_HYPERLINK_ATTR,
+    project_hyperlink_errors,
+    svg_hyperlink_href,
+)
 from pptx_shapes import (
     has_relationship_attributes,
     resolve_preset_preview_hash,
@@ -26,7 +31,14 @@ from pptx_to_svg.preset_authoring import (
 )
 from resource_paths import icon_search_dirs_for_svg
 
-from .context import ConvertContext, ShapeResult
+from .context import (
+    TEXT_FLOW_PRESERVE,
+    TEXT_FLOW_SPLIT,
+    ConvertContext,
+    ShapeResult,
+    resolve_text_flow,
+)
+from .hyperlinks import apply_shape_hyperlink
 from .paths import (
     project_freeform_geometry_errors,
     project_gradient_geometry_errors,
@@ -45,6 +57,7 @@ from .utils import (
     _extract_inheritable_styles,
     _get_attr,
     _is_unit_axis_reflection,
+    is_picture_effect_carrier,
     parse_svg_length,
     parse_transform_operations,
     parse_transform_matrix,
@@ -85,8 +98,10 @@ from ..canvas_contract import (
     parse_project_viewbox,
 )
 from ..native_objects import (
+    INLINE_FORMULA_ATTR,
     NativeMarkerAttributeError,
     convert_native_object,
+    inline_formula_marker_errors,
     native_metadata_payload_matches,
     native_replacement_kind,
     native_marker_transform,
@@ -110,11 +125,11 @@ def _hydrate_native_payloads(root: ET.Element, svg_path: Path) -> int:
         ) from exc
 
 
-def _require_chart_table_marker_attributes(
+def _require_native_marker_attributes(
     root: ET.Element,
     svg_path: Path | str,
 ) -> None:
-    """Reject contradictory chart/table marker aliases before either route."""
+    """Reject contradictory native marker aliases before conversion."""
     errors: list[str] = []
     for elem in root.iter():
         if elem.tag.rsplit('}', 1)[-1] == 'metadata':
@@ -140,8 +155,61 @@ def _require_chart_table_marker_attributes(
     preview = '; '.join(errors[:8])
     suffix = '' if len(errors) <= 8 else f'; +{len(errors) - 8} more'
     raise SvgNativeConversionError(
-        f'{Path(svg_path).name}: invalid chart/table replacement metadata: '
+        f'{Path(svg_path).name}: invalid native replacement metadata: '
         f'{preview}{suffix}'
+    )
+
+
+def _require_inline_formula_markers(
+    root: ET.Element,
+    svg_path: Path | str,
+) -> None:
+    """Reject malformed inline formula runs before text lowering."""
+    errors = inline_formula_marker_errors(root)
+    if not errors:
+        return
+    preview = '; '.join(errors[:8])
+    suffix = '' if len(errors) <= 8 else f'; +{len(errors) - 8} more'
+    raise SvgNativeConversionError(
+        f'{Path(svg_path).name}: invalid {INLINE_FORMULA_ATTR} marker(s): '
+        f'{preview}{suffix}'
+    )
+
+
+def _require_project_hyperlinks(
+    root: ET.Element,
+    svg_path: Path | str,
+    *,
+    slide_count: int | None,
+) -> None:
+    """Reject hyperlinks that cannot be represented faithfully in PPTX."""
+    errors = project_hyperlink_errors(root, slide_count=slide_count)
+    if not errors:
+        return
+    preview = '; '.join(errors[:8])
+    suffix = '' if len(errors) <= 8 else f'; +{len(errors) - 8} more'
+    raise SvgNativeConversionError(
+        f'{Path(svg_path).name}: invalid SVG hyperlink(s): {preview}{suffix}'
+    )
+
+
+def _native_replacement_enabled(elem: ET.Element, ctx: ConvertContext) -> bool:
+    """Return whether this marker is active under the current export policy."""
+    kind = native_replacement_kind(elem)
+    if kind == 'formula':
+        return True
+    return ctx.native_objects_enabled and kind in {'chart', 'table'}
+
+
+def _contains_enabled_native_replacement(
+    elem: ET.Element,
+    ctx: ConvertContext,
+) -> bool:
+    """Return whether one subtree contains an active native replacement."""
+    return any(
+        descendant.tag.replace(f'{{{SVG_NS}}}', '') != 'metadata'
+        and _native_replacement_enabled(descendant, ctx)
+        for descendant in elem.iter()
     )
 
 
@@ -686,11 +754,7 @@ def convert_g(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
     keep their absolute slide coordinates unchanged.
     """
     transform = elem.get('transform', '')
-    native_subtree_active = ctx.native_objects_enabled and any(
-        native_replacement_kind(descendant)
-        and descendant.tag.replace(f'{{{SVG_NS}}}', '') != 'metadata'
-        for descendant in elem.iter()
-    )
+    native_subtree_active = _contains_enabled_native_replacement(elem, ctx)
     if native_subtree_active:
         dx, dy, sx, sy = native_marker_transform(transform)
         angle_deg = 0.0
@@ -782,12 +846,12 @@ def convert_g(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
 
     if native_subtree_active and child_ctx.opacity_multiplier < 1.0:
         raise SvgNativeConversionError(
-            "Group opacity cannot be applied to data-pptx-replace-with chart/table "
-            "objects; export without --native-charts-and-tables to use the "
-            "shape-based SVG fallback"
+            "Group opacity cannot be applied to an active native replacement; "
+            "remove the group opacity or remove data-pptx-replace-with to keep "
+            "the subtree as ordinary SVG"
         )
 
-    if child_ctx.native_objects_enabled:
+    if _native_replacement_enabled(elem, child_ctx):
         native_result = convert_native_object(elem, child_ctx)
         if native_result:
             ctx.sync_from_child(child_ctx)
@@ -854,11 +918,19 @@ def convert_g(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
             or elem.get('data-pptx-geometry-kind') == 'custom'
         )
     )
+    logical_picture_effect_group = (
+        filter_id is not None
+        and is_picture_effect_carrier(elem)
+    )
     explicit_native_group = elem.get('data-pptx-object') == 'group'
     if (
         len(child_results) == 1
         and not explicit_native_group
-        and (not should_animate_group or logical_native_shape_group)
+        and (
+            not should_animate_group
+            or logical_native_shape_group
+            or logical_picture_effect_group
+        )
     ):
         if should_animate_group and elem_id:
             shape_match = re.search(r'<p:cNvPr id="(\d+)"', child_results[0].xml)
@@ -962,6 +1034,14 @@ def convert_g(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
 </p:grpSp>''', bounds_emu=(group_x, group_y, group_x + group_w, group_y + group_h))
 
 
+def convert_a(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
+    """Convert one standard SVG anchor into a clickable DrawingML object."""
+    result = convert_g(elem, ctx)
+    if result is None:
+        return None
+    return apply_shape_hyperlink(result, ctx, svg_hyperlink_href(elem))
+
+
 # ---------------------------------------------------------------------------
 # Defs collection & element dispatch
 # ---------------------------------------------------------------------------
@@ -979,6 +1059,7 @@ _CONVERTERS = {
     'text': convert_text,
     'image': convert_image,
     'g': convert_g,
+    'a': convert_a,
     'svg': convert_nested_svg,
 }
 
@@ -1173,6 +1254,18 @@ def _geometry_trace_metadata(elem: ET.Element, result: ShapeResult) -> dict[str,
         return {'output_geometry': 'picture', 'fidelity': 'native-normalized'}
     if xml.startswith('<p:graphicFrame>'):
         return {'output_geometry': 'native-object', 'fidelity': 'native-normalized'}
+    if xml.startswith('<mc:AlternateContent'):
+        if elem.tag.replace(f'{{{SVG_NS}}}', '') == 'text':
+            inline_formula_count = sum(
+                1 for child in elem.iter()
+                if child.get(INLINE_FORMULA_ATTR) is not None
+            )
+            return {
+                'output_geometry': 'text',
+                'inline_formula_count': inline_formula_count,
+                'fidelity': 'native-normalized',
+            }
+        return {'output_geometry': 'native-formula', 'fidelity': 'exact'}
 
     preset_match = re.search(r'<a:prstGeom prst="([^"]+)"', xml)
     if preset_match is not None:
@@ -1276,6 +1369,9 @@ def convert_element(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None
     if converter:
         try:
             result = converter(elem, ctx)
+            shape_hyperlink = elem.get(SHAPE_HYPERLINK_ATTR)
+            if result is not None and shape_hyperlink is not None:
+                result = apply_shape_hyperlink(result, ctx, shape_hyperlink)
         except Exception as e:
             trace('error', error=str(e))
             raise SvgNativeConversionError(f'Failed to convert <{tag}>: {e}') from e
@@ -1329,7 +1425,7 @@ def collect_unsupported_visuals(
             return
         is_supported_visual_child = (
             tag in _SUPPORTED_VISUAL_CHILD_TAGS
-            and parent_tag in {'text', 'tspan'}
+            and parent_tag in {'text', 'tspan', 'a'}
         )
         is_data_icon_placeholder = (
             allow_data_icon_use
@@ -1357,8 +1453,9 @@ def collect_unsupported_visuals(
 def convert_svg_to_slide_shapes(
     svg_path: str | Path,
     slide_num: int = 1,
+    slide_count: int | None = None,
     verbose: bool = False,
-    merge_paragraphs: bool = True,
+    merge_paragraphs: bool | None = None,
     image_optimize: bool = True,
     image_max_dimension: int | None = 2560,
     image_sizing: str = 'cap',
@@ -1368,8 +1465,10 @@ def convert_svg_to_slide_shapes(
     animation_group_overrides: frozenset[str] | None = None,
     theme_font_spec: ThemeFontSpec | None = None,
     theme_color_spec: ThemeColorSpec | None = None,
+    primary_language: str | None = None,
     trace_out: list[dict[str, Any]] | None = None,
     promote_background: bool = True,
+    text_flow: str | None = None,
 ) -> tuple[
     str,
     dict[str, bytes],
@@ -1383,11 +1482,13 @@ def convert_svg_to_slide_shapes(
     Args:
         svg_path: Path to the SVG file.
         slide_num: Slide number (for naming).
+        slide_count: Public deck size used to validate ``#slide-N`` targets.
         verbose: Print progress info.
-        merge_paragraphs: When True, mergeable paragraph blocks (same x,
-            dy clustered around one base line-height) become a single
-            editable text frame with multiple <a:p>. Disable it to preserve
-            the SVG's exact line layout (one textbox per line).
+        merge_paragraphs: Legacy compatibility option. True selects reflow;
+            False selects split. Do not combine with ``text_flow``.
+        text_flow: Positional-tspan policy. ``preserve`` keeps authored visual
+            line breaks in one frame, ``reflow`` lets PowerPoint wrap the text,
+            and ``split`` emits one text frame per visual line.
         image_optimize: Downsample oversized raster images for PPTX export.
         image_max_dimension: Maximum optimized image dimension in pixels.
         image_sizing: ``cap`` to only cap source dimensions, ``display`` to
@@ -1395,7 +1496,8 @@ def convert_svg_to_slide_shapes(
         image_scale: Target image pixels per SVG display pixel.
         image_quality: JPEG quality used for opaque optimized rasters.
         native_objects: Convert explicit ``data-pptx-replace-with`` chart/table
-            markers to native PowerPoint Chart/Table objects. Default off.
+            markers to native PowerPoint Chart/Table objects. Formula markers
+            are intrinsically native and do not use this opt-in. Default off.
         animation_group_overrides: Explicit top-level SVG group ids from
             ``animations.json`` that override the legacy chrome-name fallback.
             Explicit structural layer/role/placeholder markers remain excluded.
@@ -1404,6 +1506,8 @@ def convert_svg_to_slide_shapes(
         theme_color_spec: Optional context-aware theme-color contract. Exact
             locked colors emit DrawingML scheme tokens while local colors stay
             fixed.
+        primary_language: Canonical BCP-47 project content language. ``None``
+            keeps the legacy per-run script heuristic.
         trace_out: Optional list populated with one per-slide trace dictionary.
         promote_background: Promote the first eligible full-canvas rectangle
             into native ``p:bg``. Structured export disables this generic pass
@@ -1423,6 +1527,7 @@ def convert_svg_to_slide_shapes(
         - content_type_overrides: Dict of {pptx internal path: content type}
           for package_files that require [Content_Types].xml overrides.
     """
+    text_flow = resolve_text_flow(text_flow, merge_paragraphs)
     svg_path = Path(svg_path)
     tree = ET.parse(str(svg_path))
     root = tree.getroot()
@@ -1434,7 +1539,13 @@ def convert_svg_to_slide_shapes(
         )
     except CanvasContractError as exc:
         raise SvgNativeConversionError(str(exc)) from exc
-    _require_chart_table_marker_attributes(root, svg_path)
+    _require_native_marker_attributes(root, svg_path)
+    _require_inline_formula_markers(root, svg_path)
+    _require_project_hyperlinks(
+        root,
+        svg_path,
+        slide_count=slide_count,
+    )
     _require_project_nested_svg_crops(root, svg_path)
     _require_project_clip_paths(root, svg_path)
     authored_errors = validate_authored_preset_tree(root)
@@ -1576,6 +1687,13 @@ def convert_svg_to_slide_shapes(
         if verbose:
             print(f'  Expanded {expanded_local} local <use href="#..."/> instance(s)')
 
+    _require_inline_formula_markers(root, svg_path)
+    _require_project_hyperlinks(
+        root,
+        svg_path,
+        slide_count=slide_count,
+    )
+
     # Recheck compiler-injected icon/use wrappers and cloned definition trees.
     _require_project_nested_svg_crops(root, svg_path)
     _require_project_images(root, svg_path)
@@ -1600,23 +1718,75 @@ def convert_svg_to_slide_shapes(
             f'{svg_path.name}: text-metric materialization failed: {exc}'
         ) from exc
 
+    inline_formula_count_before_text_lowering = sum(
+        1 for elem in root.iter()
+        if elem.get(INLINE_FORMULA_ATTR) is not None
+    )
+    hyperlink_count_before_text_lowering = sum(
+        1 for elem in root.iter()
+        if (
+            elem.tag == f'{{{SVG_NS}}}a'
+            or elem.get(SHAPE_HYPERLINK_ATTR) is not None
+        )
+    )
+
     # Flatten positional <tspan> (those with x/y/non-zero dy) into independent
     # <text> elements. DrawingML runs cannot reposition mid-paragraph, so a
     # dy-stacked block of tspans would otherwise collapse onto one baseline,
     # and an x-anchored tspan would render in the wrong column. finalize_svg
     # does the same flattening on disk; doing it here keeps native pptx output
     # correct when reading raw svg_output/.
-    # merge_paragraphs additionally folds mergeable paragraph blocks into a
-    # single annotated <text> for downstream multi-<a:p> conversion.
+    # Preserve/reflow modes additionally fold conservative paragraph blocks
+    # into one annotated <text>. Preserve keeps visual lines as DrawingML hard
+    # breaks; reflow joins wrapping lines; split keeps one frame per line.
     from ..tspan_flattener import flatten_positional_tspans
-    flattened = flatten_positional_tspans(tree, merge_paragraphs=merge_paragraphs)
+    flattened = flatten_positional_tspans(
+        tree,
+        merge_paragraphs=text_flow != TEXT_FLOW_SPLIT,
+        preserve_line_breaks=text_flow == TEXT_FLOW_PRESERVE,
+    )
     if flattened:
         trace_steps.append({
             'action': 'flatten-positional-tspans',
-            'merge_paragraphs': merge_paragraphs,
+            'text_flow': text_flow,
+            # Compatibility field for older trace readers.
+            'merge_paragraphs': text_flow != TEXT_FLOW_SPLIT,
         })
         if verbose:
-            print('  Flattened positional <tspan> into independent <text>')
+            print(f'  Lowered positional <tspan> using {text_flow} text flow')
+
+    inline_formula_count_after_text_lowering = sum(
+        1 for elem in root.iter()
+        if elem.get(INLINE_FORMULA_ATTR) is not None
+    )
+    hyperlink_count_after_text_lowering = sum(
+        1 for elem in root.iter()
+        if (
+            elem.tag == f'{{{SVG_NS}}}a'
+            or elem.get(SHAPE_HYPERLINK_ATTR) is not None
+        )
+    )
+    if (
+        inline_formula_count_after_text_lowering
+        != inline_formula_count_before_text_lowering
+    ):
+        raise SvgNativeConversionError(
+            f'{svg_path.name}: positional text lowering changed inline formula '
+            f'marker count from {inline_formula_count_before_text_lowering} '
+            f'to {inline_formula_count_after_text_lowering}'
+        )
+    if hyperlink_count_after_text_lowering != hyperlink_count_before_text_lowering:
+        raise SvgNativeConversionError(
+            f'{svg_path.name}: positional text lowering changed hyperlink '
+            f'count from {hyperlink_count_before_text_lowering} '
+            f'to {hyperlink_count_after_text_lowering}'
+        )
+    _require_inline_formula_markers(root, svg_path)
+    _require_project_hyperlinks(
+        root,
+        svg_path,
+        slide_count=slide_count,
+    )
 
     _require_project_text_properties(root, svg_path)
     try:
@@ -1645,10 +1815,11 @@ def convert_svg_to_slide_shapes(
         reserved_shape_ids=frozenset(source_shape_id_map.values()),
         source_shape_id_map=source_shape_id_map,
         slide_num=slide_num,
+        slide_count=slide_count,
         viewport_width=viewport_width,
         viewport_height=viewport_height,
         svg_dir=Path(svg_path).parent,
-        merge_paragraphs=merge_paragraphs,
+        text_flow=text_flow,
         image_optimize=image_optimize,
         image_max_dimension=image_max_dimension,
         image_sizing=image_sizing,
@@ -1659,6 +1830,7 @@ def convert_svg_to_slide_shapes(
         trace_events=trace_events,
         theme_font_spec=theme_font_spec,
         theme_color_spec=theme_color_spec,
+        primary_language=primary_language,
         inherited_styles=_extract_inheritable_styles(root),
         text_font_sizes=text_font_sizes,
         text_letter_spacings=text_letter_spacings,

@@ -22,6 +22,7 @@ from pptx_shapes import (
     svg_preset_preview_fingerprint,
     validate_ooxml_xfrm,
 )
+from language_tags import language_base, language_uses_rtl
 
 from .context import AffineMatrix, ConvertContext, IDENTITY_MATRIX
 
@@ -63,14 +64,15 @@ EA_FONTS = {
     'Source Han Sans JP', 'Source Han Serif JP',
     'WenQuanYi Micro Hei', 'WenQuanYi Zen Hei',
     'YouYuan', 'LiSu', 'HuaWenKaiTi',
-    'Songti SC', 'Songti TC',
+    'Heiti TC', 'Kaiti TC', 'Songti SC', 'Songti TC',
     # Windows 10/11 + Office default / common Simplified Chinese
     'DengXian', 'DengXian Light', 'DengXian Bold', 'Microsoft YaHei UI',
     # Office display Chinese (华文 / 方正) — usually title-only, not on every client
     'STXingkai', 'STLiti', 'STXinwei', 'STHupo', 'STCaiyun',
     'FZShuTi', 'FZYaoti',
     # Common Traditional Chinese (Office)
-    'DFKai-SB', 'MingLiU', 'PMingLiU', 'MingLiU-ExtB', 'PMingLiU-ExtB',
+    'DFKai-SB', 'MingLiU', 'PMingLiU', 'MingLiU_HKSCS',
+    'MingLiU-ExtB', 'PMingLiU-ExtB',
     'Microsoft JhengHei UI',
     # Japanese fonts (Windows-available)
     'Yu Gothic', 'Yu Gothic UI', 'Yu Mincho',
@@ -87,6 +89,8 @@ FONT_FALLBACK_WIN = {
     'PingFang SC': 'Microsoft YaHei',
     'PingFang TC': 'Microsoft JhengHei',
     'PingFang HK': 'Microsoft JhengHei',
+    'Heiti TC': 'Microsoft JhengHei',
+    'Kaiti TC': 'DFKai-SB',
     'Hiragino Sans': 'Microsoft YaHei',
     'Hiragino Sans GB': 'Microsoft YaHei',
     'Hiragino Mincho ProN': 'SimSun',
@@ -97,12 +101,12 @@ FONT_FALLBACK_WIN = {
     'STXihei': 'Microsoft YaHei',
     'STZhongsong': 'SimSun',
     'Songti SC': 'SimSun',
-    'Songti TC': 'SimSun',
+    'Songti TC': 'PMingLiU',
     'Noto Sans SC': 'Microsoft YaHei',
     'Noto Sans CJK SC': 'Microsoft YaHei',
     'Noto Sans TC': 'Microsoft JhengHei',
     'Noto Serif SC': 'SimSun',
-    'Noto Serif TC': 'SimSun',
+    'Noto Serif TC': 'PMingLiU',
     # Japanese: keep as-is if user specified (PowerPoint will fallback if uninstalled)
     # 'Noto Sans JP': → keep as 'Noto Sans JP' (do not map)
     # 'メイリオ': → keep as 'メイリオ' (Meiryo alias)
@@ -110,7 +114,7 @@ FONT_FALLBACK_WIN = {
     'Source Han Sans SC': 'Microsoft YaHei',
     'Source Han Sans TC': 'Microsoft JhengHei',
     'Source Han Serif SC': 'SimSun',
-    'Source Han Serif TC': 'SimSun',
+    'Source Han Serif TC': 'PMingLiU',
     'Source Han Sans JP': 'Noto Sans JP',
     'Source Han Serif JP': 'Noto Serif JP',
     'WenQuanYi Micro Hei': 'Microsoft YaHei',
@@ -152,8 +156,11 @@ _SERIF_LATIN = {
 # target-specific; keep these examples aligned with strategist.md §g.
 PPT_SAFE_FONTS = frozenset({
     'microsoft yahei', 'simhei', 'simsun', 'kaiti', 'fangsong',
-    'dengxian', 'microsoft jhenghei',
+    'dengxian',
+    'microsoft jhenghei', 'microsoft jhenghei ui', 'pmingliu', 'mingliu',
+    'mingliu_hkscs', 'dfkai-sb',
     'pingfang sc', 'heiti sc', 'songti sc', 'stsong',
+    'pingfang tc', 'pingfang hk', 'heiti tc', 'songti tc', 'kaiti tc',
     'yu gothic', 'yu gothic ui', 'yu mincho',
     'meiryo', 'meiryo ui',
     'ms gothic', 'ms mincho', 'ms pgothic', 'ms pmincho', 'ms ui gothic',
@@ -220,9 +227,12 @@ PROJECT_DEFINITION_TAGS = frozenset({
     'radialGradient',
 })
 PROJECT_GRADIENT_TAGS = frozenset({'linearGradient', 'radialGradient'})
+PROJECT_TEXT_IMAGE_FILL_ATTR = 'data-pptx-text-image-fill'
+PROJECT_TEXT_IMAGE_FILL_MODES = frozenset({'stretch', 'tile'})
 # PPTX angle projection can overshoot a unit box by at most ~0.1036.
 PROJECT_LINEAR_GRADIENT_COORDINATE_MIN = -0.105
 PROJECT_LINEAR_GRADIENT_COORDINATE_MAX = 1.105
+PROJECT_RADIAL_FOCUS_TOLERANCE = 0.00001
 PROJECT_FILTER_PRIMITIVES = frozenset({
     'feDropShadow',
     'feGaussianBlur',
@@ -238,7 +248,13 @@ PROJECT_FILTER_EFFECT_PRIMITIVES = frozenset({
     'feDropShadow',
     'feGaussianBlur',
 })
-PROJECT_FILTER_PUBLIC_TARGETS = frozenset({'rect', 'circle', 'path', 'text'})
+PROJECT_FILTER_PUBLIC_TARGETS = frozenset({
+    'rect',
+    'circle',
+    'image',
+    'path',
+    'text',
+})
 _PROJECT_MARKER_NUMBER_TOKEN = (
     r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?'
 )
@@ -1010,7 +1026,7 @@ def _contains_native_marker(elem: ET.Element) -> bool:
     from ..native_objects.marker_attributes import native_replacement_kind
 
     return any(
-        native_replacement_kind(descendant) in {'table', 'chart'}
+        native_replacement_kind(descendant) in {'table', 'chart', 'formula'}
         for descendant in _iter_visual_transform_tree(elem)
     )
 
@@ -1161,7 +1177,7 @@ def _transform_semantic_error(
             if all(name in {'translate', 'scale'} for name in names):
                 return None
             return (
-                f'{label} native table/chart marker transforms support only '
+                f'{label} native replacement marker transforms support only '
                 'translate and scale'
             )
         if _contains_thick_circle(elem, thick_circle_ids):
@@ -2143,6 +2159,51 @@ def project_marker_errors(root: ET.Element) -> list[str]:
     return sorted(errors)
 
 
+def resolve_project_text_image_fill(pattern: ET.Element) -> tuple[str, ET.Element]:
+    """Resolve the controlled one-image pattern used for native text picture fills."""
+    if _svg_element_tag(pattern) != 'pattern':
+        raise ValueError('definition must be an SVG <pattern>')
+
+    mode = pattern.get(PROJECT_TEXT_IMAGE_FILL_ATTR, '')
+    if mode not in PROJECT_TEXT_IMAGE_FILL_MODES:
+        supported = ', '.join(sorted(PROJECT_TEXT_IMAGE_FILL_MODES))
+        raise ValueError(f'{PROJECT_TEXT_IMAGE_FILL_ATTR} must be one of: {supported}')
+    preset_attributes = [
+        name
+        for name in ('data-pptx-pattern', 'data-pptx-fg', 'data-pptx-bg')
+        if pattern.get(name) is not None
+    ]
+    if preset_attributes:
+        raise ValueError(
+            'text image fill must not combine preset-pattern attributes: '
+            f'{", ".join(preset_attributes)}'
+        )
+    if pattern.get('patternTransform') is not None:
+        raise ValueError('pattern must not use patternTransform')
+
+    children = list(pattern)
+    if len(children) != 1 or children[0].tag != f'{{{SVG_NS}}}image':
+        raise ValueError('pattern must contain exactly one direct SVG <image> child')
+
+    image = children[0]
+    unsupported = [
+        name
+        for name in (
+            'clip-path',
+            'filter',
+            'fill-opacity',
+            'mask',
+            'opacity',
+            'style',
+            'transform',
+        )
+        if image.get(name) is not None
+    ]
+    if unsupported:
+        raise ValueError(f"pattern image must not use {', '.join(unsupported)}")
+    return mode, image
+
+
 def project_paint_reference_errors(root: ET.Element) -> list[str]:
     """Validate local paint-server references and their native contexts."""
     definitions, _duplicates = project_definition_index(root)
@@ -2201,7 +2262,11 @@ def project_paint_reference_errors(root: ET.Element) -> list[str]:
             elif property_name == 'stroke' and elem_tag_lower in stroke_shape_tags:
                 allowed_tags = ('lineargradient', 'radialgradient')
             elif property_name == 'fill' and elem_tag_lower in {'text', 'tspan'}:
-                allowed_tags = ('lineargradient', 'radialgradient')
+                target_tag = (_svg_element_tag(target) or str(target.tag)).lower()
+                if target_tag == 'pattern' and target.get(PROJECT_TEXT_IMAGE_FILL_ATTR) is not None:
+                    allowed_tags = ('lineargradient', 'radialgradient', 'pattern')
+                else:
+                    allowed_tags = ('lineargradient', 'radialgradient')
             elif property_name == 'fill' and elem_tag_lower == 'g':
                 allowed_tags = (
                     ('lineargradient', 'radialgradient')
@@ -2225,6 +2290,19 @@ def project_paint_reference_errors(root: ET.Element) -> list[str]:
                 continue
 
             target_tag = (_svg_element_tag(target) or str(target.tag)).lower()
+            is_text_image_fill = (
+                target_tag == 'pattern'
+                and target.get(PROJECT_TEXT_IMAGE_FILL_ATTR) is not None
+            )
+            if is_text_image_fill and not (
+                property_name == 'fill'
+                and elem_tag_lower in {'text', 'tspan'}
+            ):
+                errors.add(
+                    f'<{elem_tag}> {property_name}=url(#{reference_id}) uses a '
+                    'text image fill pattern outside <text>/<tspan>'
+                )
+                continue
             if target_tag not in allowed_tags:
                 tag_labels = {
                     'lineargradient': 'linearGradient',
@@ -2237,6 +2315,16 @@ def project_paint_reference_errors(root: ET.Element) -> list[str]:
                     f'to <{_svg_element_tag(target) or target.tag}>; expected '
                     f'{expected}'
                 )
+                continue
+
+            if property_name == 'fill' and elem_tag_lower in {'text', 'tspan'} and target_tag == 'pattern':
+                try:
+                    resolve_project_text_image_fill(target)
+                except ValueError as exc:
+                    errors.add(
+                        f'<{elem_tag}> fill=url(#{reference_id}) has an invalid '
+                        f'text image fill: {exc}'
+                    )
     return sorted(errors)
 
 
@@ -2298,6 +2386,16 @@ def parse_project_linear_gradient_coordinate(raw: str) -> float:
             'must be within -0.105..1.105 or -10.5%..110.5%'
         )
     return number
+
+
+def is_project_radial_focus_point(focus_x: float, focus_y: float) -> bool:
+    """Return whether a focus lies inside the canonical SVG radial circle."""
+    if not math.isfinite(focus_x) or not math.isfinite(focus_y):
+        return False
+    return (
+        (focus_x - 0.5) ** 2 + (focus_y - 0.5) ** 2
+        <= 0.25 + PROJECT_RADIAL_FOCUS_TOLERANCE
+    )
 
 
 def project_gradient_errors(root: ET.Element) -> list[str]:
@@ -2369,6 +2467,7 @@ def project_gradient_errors(root: ET.Element) -> list[str]:
                     'point; use different x1/y1 and x2/y2 coordinates'
                 )
         else:
+            radial_coordinates: dict[str, float] = {}
             for coordinate_name in ('cx', 'cy', 'r', 'fx', 'fy'):
                 raw_coordinate = gradient.get(coordinate_name)
                 if raw_coordinate is None:
@@ -2382,8 +2481,34 @@ def project_gradient_errors(root: ET.Element) -> list[str]:
                         f'got {raw_coordinate!r}'
                     )
                     continue
+                radial_coordinates[coordinate_name] = coordinate
                 if coordinate_name == 'r' and coordinate <= 0:
                     errors.add(f'{label} r must be greater than 0')
+            focus_x_name = (
+                'fx' if gradient.get('fx') is not None else 'cx'
+            )
+            focus_y_name = (
+                'fy' if gradient.get('fy') is not None else 'cy'
+            )
+            focus_is_valid = (
+                (
+                    gradient.get(focus_x_name) is None
+                    or focus_x_name in radial_coordinates
+                )
+                and (
+                    gradient.get(focus_y_name) is None
+                    or focus_y_name in radial_coordinates
+                )
+            )
+            if focus_is_valid:
+                focus_x = radial_coordinates.get(focus_x_name, 0.5)
+                focus_y = radial_coordinates.get(focus_y_name, 0.5)
+                if not is_project_radial_focus_point(focus_x, focus_y):
+                    errors.add(
+                        f'{label} effective focus (fx/fy, otherwise cx/cy) '
+                        'must lie within the canonical circle centered at '
+                        f'0.5,0.5 with radius 0.5; got ({focus_x}, {focus_y})'
+                    )
 
         stops: list[ET.Element] = []
         for child in list(gradient):
@@ -2624,11 +2749,19 @@ def project_filter_errors(root: ET.Element) -> list[str]:
             continue
         if (
             tag not in PROJECT_FILTER_PUBLIC_TARGETS
+            and not _is_compact_authored_preset_filter_target(elem)
             and not _is_imported_preset_preview_filter_target(elem, parents)
+            and not is_picture_effect_carrier(elem)
         ):
             errors.add(
                 f'{label} cannot use filter; supported native targets are '
-                'rect, circle, path, and text'
+                'rect, circle, image, path, text, a validated compact authored-'
+                'preset shape, and an exact registered carrier group'
+            )
+        if tag == 'image' and elem.get('clip-path') is not None:
+            errors.add(
+                f'{label} cannot combine filter and clip-path on the same '
+                'image; put the filter on an exact single-image outer <g>'
             )
         match = re.fullmatch(r'url\(#([^)]+)\)', raw_filter.strip())
         if match is None:
@@ -2773,6 +2906,26 @@ def project_filter_errors(root: ET.Element) -> list[str]:
     return sorted(errors)
 
 
+def _is_compact_authored_preset_filter_target(elem: ET.Element) -> bool:
+    """Recognize one validated project-authored preset shape filter target."""
+    if (
+        _svg_element_tag(elem) != 'g'
+        or elem.get('data-pptx-authoring') != 'preset'
+        or elem.get('data-pptx-object') != 'shape'
+        or elem.get('data-pptx-part') is not None
+    ):
+        return False
+    from pptx_to_svg.preset_authoring import (  # Local to avoid layer coupling.
+        authored_preset_encoding,
+        validate_authored_preset_group,
+    )
+
+    return (
+        authored_preset_encoding(elem) == 'compact'
+        and not validate_authored_preset_group(elem)
+    )
+
+
 def _is_imported_preset_preview_filter_target(
     elem: ET.Element,
     parents: dict[ET.Element, ET.Element],
@@ -2783,8 +2936,8 @@ def _is_imported_preset_preview_filter_target(
     shape-level effect.  The lossless importer therefore keeps the native
     filter on the hidden geometry carrier and mirrors the same reference onto
     its hash-locked preview group.  The preview group is never exported as a
-    separate PowerPoint object; ordinary authored ``<g filter>`` remains
-    outside the project contract.
+    separate PowerPoint object; other ordinary or authored ``<g filter>``
+    forms remain outside the project contract.
     """
     if (
         _svg_element_tag(elem) != 'g'
@@ -2840,6 +2993,70 @@ def _is_imported_preset_preview_filter_target(
     return (
         expected_hash is not None
         and svg_preset_preview_fingerprint(parent) == expected_hash
+    )
+
+
+def is_picture_effect_carrier(elem: ET.Element) -> bool:
+    """Recognize one effect carrier around exactly one clipped picture."""
+    if (
+        _svg_element_tag(elem) != 'g'
+        or elem.get('data-pptx-object') == 'group'
+        or re.fullmatch(
+            r'url\(#([^)]+)\)',
+            (elem.get('filter') or '').strip(),
+        ) is None
+        or elem.get('data-pptx-layer') not in {None, 'master', 'layout'}
+        or any(
+            elem.get(attribute) is not None
+            for attribute in (
+                'data-pptx-placeholder',
+                'data-pptx-binding',
+                'data-pptx-replace-with',
+                'data-pptx-native',
+            )
+        )
+    ):
+        return False
+    children = [
+        child for child in elem
+        if _svg_element_tag(child) not in PROJECT_NON_VISUAL_DEFINITION_CHILD_TAGS
+    ]
+    if len(children) != 1:
+        return False
+    picture = children[0]
+    if picture.get('filter') is not None:
+        return False
+    owner_kind = elem.get('data-pptx-object')
+    if _svg_element_tag(picture) == 'image':
+        if resolve_url_id(picture.get('clip-path', '')) is None:
+            return False
+        if owner_kind is None:
+            return True
+        shape_id = elem.get('data-pptx-shape-id')
+        return (
+            owner_kind == 'picture'
+            and shape_id is not None
+            and picture.get('data-pptx-object') == 'picture'
+            and picture.get('data-pptx-shape-id') == shape_id
+        )
+    if (
+        _svg_element_tag(picture) != 'svg'
+        or owner_kind != 'picture'
+        or picture.get('data-pptx-object') != 'picture'
+        or picture.get('viewBox') is None
+        or picture.get('preserveAspectRatio') != 'none'
+    ):
+        return False
+    shape_id = elem.get('data-pptx-shape-id')
+    if (
+        shape_id is None
+        or picture.get('data-pptx-shape-id') != shape_id
+    ):
+        return False
+    crop_children = list(picture)
+    return (
+        len(crop_children) == 1
+        and _svg_element_tag(crop_children[0]) == 'image'
     )
 
 
@@ -3017,8 +3234,50 @@ def is_cjk_char(ch: str) -> bool:
     )
 
 
-def detect_text_lang(text: str) -> str:
-    """Return a DrawingML language tag for a text run."""
+def _contains_codepoint_range(
+    text: str,
+    ranges: tuple[tuple[int, int], ...],
+) -> bool:
+    """Return whether text contains a code point in one of the ranges."""
+    return any(
+        start <= ord(ch) <= end
+        for ch in text
+        for start, end in ranges
+    )
+
+
+def _default_language_for_script(
+    default_language: str | None,
+    bases: frozenset[str],
+    fallback: str,
+) -> str:
+    """Prefer the project language when it belongs to the detected script."""
+    if default_language and language_base(default_language) in bases:
+        return default_language
+    return fallback
+
+
+def text_has_rtl_characters(text: str) -> bool:
+    """Return whether text contains a strong right-to-left character."""
+    return any(unicodedata.bidirectional(ch) in {'R', 'AL'} for ch in text)
+
+
+def text_uses_rtl(text: str, default_language: str | None = None) -> bool:
+    """Resolve paragraph direction from its first strong character or project."""
+    for char in text:
+        direction = unicodedata.bidirectional(char)
+        if direction in {'R', 'AL'}:
+            return True
+        if direction == 'L':
+            return False
+    return bool(default_language and language_uses_rtl(default_language))
+
+
+def detect_text_lang(
+    text: str,
+    default_language: str | None = None,
+) -> str:
+    """Return a DrawingML language tag, preferring the project contract."""
     has_hangul = False
     has_kana = False
     has_east_asian_text = False
@@ -3031,10 +3290,81 @@ def detect_text_lang(text: str) -> str:
         )
         has_east_asian_text = has_east_asian_text or is_cjk_char(ch)
     if has_hangul:
-        return 'ko-KR'
+        return _default_language_for_script(
+            default_language,
+            frozenset({'ko'}),
+            'ko-KR',
+        )
     if has_kana:
-        return 'ja-JP'
-    return 'zh-CN' if has_east_asian_text else 'en-US'
+        return _default_language_for_script(
+            default_language,
+            frozenset({'ja'}),
+            'ja-JP',
+        )
+    if has_east_asian_text:
+        return _default_language_for_script(
+            default_language,
+            frozenset({'zh', 'ja', 'ko'}),
+            'zh-CN',
+        )
+    if _contains_codepoint_range(text, (
+        (0x0600, 0x06FF),
+        (0x0750, 0x077F),
+        (0x08A0, 0x08FF),
+        (0xFB50, 0xFDFF),
+        (0xFE70, 0xFEFF),
+        (0x1EE00, 0x1EEFF),
+    )):
+        return _default_language_for_script(
+            default_language,
+            frozenset({'ar', 'fa', 'ps', 'sd', 'ug', 'ur'}),
+            'ar-SA',
+        )
+    if _contains_codepoint_range(text, (
+        (0x0590, 0x05FF),
+        (0xFB1D, 0xFB4F),
+    )):
+        return _default_language_for_script(
+            default_language,
+            frozenset({'he', 'yi'}),
+            'he-IL',
+        )
+    if _contains_codepoint_range(text, (
+        (0x0900, 0x097F),
+        (0xA8E0, 0xA8FF),
+    )):
+        return _default_language_for_script(
+            default_language,
+            frozenset({'hi', 'mr', 'ne', 'sa'}),
+            'hi-IN',
+        )
+    if _contains_codepoint_range(text, ((0x0E00, 0x0E7F),)):
+        return _default_language_for_script(
+            default_language,
+            frozenset({'th'}),
+            'th-TH',
+        )
+    if _contains_codepoint_range(text, (
+        (0x0400, 0x052F),
+        (0x1C80, 0x1C8F),
+        (0x2DE0, 0x2DFF),
+        (0xA640, 0xA69F),
+    )):
+        return _default_language_for_script(
+            default_language,
+            frozenset({'be', 'bg', 'kk', 'ky', 'mk', 'mn', 'ru', 'sr', 'uk'}),
+            'ru-RU',
+        )
+    if _contains_codepoint_range(text, (
+        (0x0370, 0x03FF),
+        (0x1F00, 0x1FFF),
+    )):
+        return _default_language_for_script(
+            default_language,
+            frozenset({'el'}),
+            'el-GR',
+        )
+    return default_language or 'en-US'
 
 
 def _is_grapheme_extend(ch: str) -> bool:
@@ -3157,7 +3487,7 @@ def split_project_text_clusters(text: str) -> list[str]:
 def resolve_text_run_fonts(text: str, fonts: dict[str, str]) -> dict[str, str]:
     """Return DrawingML latin/ea/cs typefaces for one text run."""
     latin = fonts['latin']
-    if detect_text_lang(text) != 'en-US':
+    if any(is_cjk_char(ch) for ch in text):
         ea = fonts['ea']
     else:
         ea = latin

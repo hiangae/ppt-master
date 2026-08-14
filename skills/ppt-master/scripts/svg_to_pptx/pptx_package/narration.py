@@ -20,6 +20,7 @@ from pptx_transitions import (
     parse_source_xml,
     read_slide_transition_xml,
     serialize_source_xml,
+    validate_seconds,
 )
 
 
@@ -40,6 +41,7 @@ AUDIO_CONTENT_TYPES = {
 }
 
 NARRATION_EXTENSIONS = tuple(AUDIO_CONTENT_TYPES.keys())
+DEFAULT_NARRATION_START_FLOOR = 0.8
 
 AUDIO_MARKER_SIZE_EMU = 457200  # 48 SVG px
 AUDIO_MARKER_OFF_CANVAS_EMU = -AUDIO_MARKER_SIZE_EMU
@@ -92,27 +94,43 @@ def find_narration_files(audio_dir: Path, svg_files: list[Path]) -> dict[str, Pa
         path for path in sorted(audio_dir.iterdir())
         if path.is_file() and path.suffix.lower() in NARRATION_EXTENSIONS
     ]
-    exact = {path.stem: path for path in audio_files}
-    normalized: dict[str, Path] = {}
-    numbered: dict[int, Path] = {}
+    exact: dict[str, list[Path]] = {}
+    normalized: dict[str, list[Path]] = {}
+    numbered: dict[int, list[Path]] = {}
     for path in audio_files:
-        normalized.setdefault(_normalize_title(path.stem), path)
+        exact.setdefault(path.stem, []).append(path)
+        normalized.setdefault(_normalize_title(path.stem), []).append(path)
         number = _leading_number(path.stem)
         if number is not None:
-            numbered.setdefault(number, path)
+            numbered.setdefault(number, []).append(path)
 
     matched: dict[str, Path] = {}
+    claimed_by: dict[Path, str] = {}
     for index, svg in enumerate(svg_files, 1):
         stem = svg.stem
-        if stem in exact:
-            matched[stem] = exact[stem]
+        candidates = exact.get(stem)
+        if not candidates:
+            candidates = normalized.get(_normalize_title(stem))
+        if not candidates:
+            candidates = numbered.get(index)
+        if not candidates:
             continue
-        norm = _normalize_title(stem)
-        if norm in normalized:
-            matched[stem] = normalized[norm]
-            continue
-        if index in numbered:
-            matched[stem] = numbered[index]
+        if len(candidates) > 1:
+            names = ", ".join(path.name for path in candidates)
+            raise ValueError(
+                f"multiple narration audio files match slide {stem!r}: "
+                f"{names}; keep exactly one supported file for this slide"
+            )
+        candidate = candidates[0]
+        previous_stem = claimed_by.get(candidate)
+        if previous_stem is not None:
+            raise ValueError(
+                f"narration audio file {candidate.name!r} matches multiple slides: "
+                f"{previous_stem!r}, {stem!r}; provide one distinct audio file "
+                "per slide"
+            )
+        matched[stem] = candidate
+        claimed_by[candidate] = stem
     return matched
 
 
@@ -284,7 +302,30 @@ def _numeric_ids(
     return ids
 
 
-def _create_audio_timing_element(shape_id: int, ctn_id: int) -> ET.Element:
+def narration_lead_in_seconds(
+    transition_duration: float,
+    *,
+    start_floor: float = DEFAULT_NARRATION_START_FLOOR,
+) -> float:
+    """Return silence after a slide transition before narration starts."""
+    transition_seconds = validate_seconds(
+        transition_duration,
+        "narration transition duration",
+        allow_zero=True,
+    )
+    floor_seconds = validate_seconds(
+        start_floor,
+        "narration start floor",
+        allow_zero=True,
+    )
+    return max(0.0, floor_seconds - transition_seconds)
+
+
+def _create_audio_timing_element(
+    shape_id: int,
+    ctn_id: int,
+    start_delay_ms: int,
+) -> ET.Element:
     audio = ET.Element(_qn(PML_NS, "audio"))
     media_node = ET.SubElement(
         audio,
@@ -297,7 +338,11 @@ def _create_audio_timing_element(shape_id: int, ctn_id: int) -> ET.Element:
         {"id": str(ctn_id), "fill": "hold", "display": "0"},
     )
     start_conditions = ET.SubElement(time_node, _qn(PML_NS, "stCondLst"))
-    ET.SubElement(start_conditions, _qn(PML_NS, "cond"), {"delay": "0"})
+    ET.SubElement(
+        start_conditions,
+        _qn(PML_NS, "cond"),
+        {"delay": str(start_delay_ms)},
+    )
     target = ET.SubElement(media_node, _qn(PML_NS, "tgtEl"))
     ET.SubElement(target, _qn(PML_NS, "spTgt"), {"spid": str(shape_id)})
     return audio
@@ -450,14 +495,26 @@ def inject_narration(
     audio_rid: str,
     media_rid: str,
     poster_rid: str,
+    start_delay: float = 0.0,
 ) -> str:
-    """Inject a hidden narration media shape and slide-entry autoplay timing."""
+    """Inject a hidden narration shape and delayed slide-entry autoplay timing."""
     if isinstance(shape_id, bool) or not isinstance(shape_id, int) or shape_id <= 0:
         raise ValueError("narration shape_id must be a positive integer")
     if shape_id > MAX_OOXML_UNSIGNED_INT:
         raise ValueError(
             "narration shape_id exceeds the OOXML unsigned-integer limit: "
             f"{shape_id}"
+        )
+    start_delay_seconds = validate_seconds(
+        start_delay,
+        "narration start delay",
+        allow_zero=True,
+    )
+    start_delay_ms = round(start_delay_seconds * 1000)
+    if start_delay_ms > MAX_OOXML_UNSIGNED_INT:
+        raise ValueError(
+            "narration start delay exceeds the OOXML unsigned-integer limit: "
+            f"{start_delay_ms} ms"
         )
 
     root = parse_source_xml(slide_xml)
@@ -517,13 +574,99 @@ def inject_narration(
                 "tmRoot/p:childTnLst",
             )
             child_nodes.append(
-                _create_audio_timing_element(shape_id, next_timing_id)
+                _create_audio_timing_element(
+                    shape_id,
+                    next_timing_id,
+                    start_delay_ms,
+                )
             )
     else:
-        audio_timing = _create_audio_timing_element(shape_id, next_timing_id + 1)
+        audio_timing = _create_audio_timing_element(
+            shape_id,
+            next_timing_id + 1,
+            start_delay_ms,
+        )
         _insert_root_timing(root, _new_timing(audio_timing, next_timing_id))
 
     return serialize_source_xml(root, slide_xml).decode("utf-8")
+
+
+def read_narration_start_delay_xml(slide_xml: str) -> int:
+    """Return the latest embedded narration picture's autoplay delay in ms."""
+    root = parse_source_xml(slide_xml)
+    if root.tag != _qn(PML_NS, "sld"):
+        raise ValueError("narration source XML root must be p:sld")
+
+    audio_shape_properties: list[ET.Element] = []
+    for picture in root.iter(_qn(PML_NS, "pic")):
+        if not any(
+            element.tag == _qn(DRAWINGML_NS, "audioFile")
+            for element in picture.iter()
+        ):
+            continue
+        properties = list(picture.iter(_qn(PML_NS, "cNvPr")))
+        if len(properties) != 1:
+            raise ValueError(
+                "narration audio picture must contain exactly one p:cNvPr"
+            )
+        audio_shape_properties.extend(properties)
+    if not audio_shape_properties:
+        raise ValueError("narration source has no embedded audio picture")
+
+    narration_shape_id = max(
+        _numeric_ids(
+            audio_shape_properties,
+            "narration audio shape",
+            minimum=1,
+        )
+    )
+    delays: list[int] = []
+    for audio in root.iter(_qn(PML_NS, "audio")):
+        media_node = audio.find(_qn(PML_NS, "cMediaNode"))
+        if media_node is None:
+            continue
+        target = media_node.find(
+            f"{_qn(PML_NS, 'tgtEl')}/{_qn(PML_NS, 'spTgt')}"
+        )
+        if target is None or target.get("spid") != str(narration_shape_id):
+            continue
+        time_node = _direct_child(
+            media_node,
+            _qn(PML_NS, "cTn"),
+            "p:audio/p:cMediaNode/p:cTn",
+        )
+        start_conditions = _direct_child(
+            time_node,
+            _qn(PML_NS, "stCondLst"),
+            "p:cTn/p:stCondLst",
+        )
+        condition = _direct_child(
+            start_conditions,
+            _qn(PML_NS, "cond"),
+            "p:stCondLst/p:cond",
+        )
+        raw_delay = condition.get("delay")
+        try:
+            delay = int(raw_delay)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"narration timing has invalid start delay: {raw_delay!r}"
+            ) from exc
+        if delay < 0 or delay > MAX_OOXML_UNSIGNED_INT:
+            raise ValueError(
+                "narration timing start delay is outside the OOXML "
+                f"unsigned-integer range: {delay}"
+            )
+        delays.append(delay)
+
+    if not delays:
+        raise ValueError("narration source has no autoplay timing for its audio picture")
+    if len(set(delays)) != 1:
+        raise ValueError(
+            "narration source timing branches disagree on autoplay delay: "
+            f"{sorted(set(delays))}"
+        )
+    return delays[0]
 
 
 def apply_recorded_timing(

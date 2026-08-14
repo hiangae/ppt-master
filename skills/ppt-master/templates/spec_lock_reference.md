@@ -1,6 +1,6 @@
 # Execution Lock Structure
 
-`spec_lock.md` is the compact execution contract from audited `design_spec.md` plus current context. It keeps stable cross-page anchors and routes, not every page-local paint or typeface. This file owns authoring structure; [`schemas/spec_lock.schema.json`](./schemas/spec_lock.schema.json) owns grammar.
+`spec_lock.md` projects cross-page anchors/routes from audited `design_spec.md` and context; it excludes local paint/type. This file owns structure; [`schemas/spec_lock.schema.json`](./schemas/spec_lock.schema.json) owns grammar.
 
 ## 1. Author the complete artifact
 
@@ -19,17 +19,19 @@ After Generate Step 4 Gate 1, read the completed Design Spec and current page/re
 | Section | Required keys | Notes |
 | --- | --- | --- |
 | `canvas` | `viewBox`, `format` | `format` is the canonical display name (for example `PPT 16:9`); `viewBox` is the matching exact geometry |
-| `communication` | `audience`, `objective`, `core_message` | Compact execution projection; `objective` combines intent and audience outcome; `consumption_mode` is optional off PPT canvases |
+| `communication` | `primary_language`, `audience`, `objective`, `core_message` | New lock: canonical BCP-47; old lock may omit it. Reject `und` and Chinese without script/region. `objective` merges intent/outcome; `consumption_mode` is optional off PPT |
 | `mode` | `mode` | Preset or `custom` |
 | `visual_style` | `visual_style` | Preset or `custom` |
 | `colors` | Stable semantic color roles | Core identity and recurring roles only; contextual SVG paints need no row; `image_rendering` appears only for AI images |
 | `typography` | `font_family`, `body`, `title` | Core family/size anchors; new locks also write explicit `title_family` and `body_family`; size anchors are unitless px numbers |
-| `icons` | `library`, `inventory` | `library` is the Strategist's primary bundled style choice or `none`; `simple-icons/*` may be selected alone or accompany it; `inventory` records the planned bundled selection rather than all usable project-local icons; `stroke_width` is conditional |
+| `icons` | `library`, `inventory` | `library` is the Strategist's primary bundled style choice or `none`; `simple-icons/*` may be selected alone or accompany it; `inventory` indexes the curated synced bundled pool rather than page usage or all usable project-local icons; `stroke_width` is conditional |
 | `page_rhythm` | One `P<NN>` row per page | Values: `anchor`, `dense`, `breathing` |
 | `pptx_structure` | `mode` | Values: `flat`, `structured` |
 | `forbidden` | Literal list items | General standards stay in their owning reference |
 
-Optional data sections: `images`, `page_charts`.
+Optional data sections: `images`, `page_visualizations` (Chart/Table only). New locks never write
+legacy `page_charts`; existing locks may retain it for read-only compatibility.
+Never declare the same page in both sections.
 
 The required universal block is:
 
@@ -70,9 +72,24 @@ Structured section value shapes:
 - P01: 03_content
 ```
 
-Project each §VII `Page | Template | Usage` row's first two fields into `page_charts`; Usage stays in the Design Spec. This is a page-local reference, not a type/geometry lock. Keys must exist in `charts/charts_index.json`; no-match stays in §IX.
+Project each §VII Page/Family/Template into at most one
+`page_visualizations` `<chart|table>/<key>` row per page; Usage, children,
+no-match, and qualitative relationships stay in §IX. Resolve the reference to
+one live SVG. It locks neither type, geometry, nor native output.
 
-Typography projection is role-for-role, not a lossy summary:
+```markdown
+## page_visualizations
+- P03: chart/line_chart
+- P09: table/record_table
+```
+
+**Legacy compatibility**: keep existing `page_charts` bare keys. Live
+Chart/Table keys resolve unambiguously through two registries; retired Structure
+keys are semantic-only, have no SVG, and rely on §IX (repair upstream when
+insufficient). New locks write `page_visualizations`; dual page declarations
+conflict even when they resolve alike.
+
+Typography projection excludes Character/upgrade References:
 
 | Design Spec §IV declaration | `spec_lock.md` field |
 | --- | --- |
@@ -89,14 +106,19 @@ New locks always write `title_family` and `body_family`, even when their values 
 
 - `font_family`, `title_family`, `body_family`, and every optional `<role>_family` use one non-empty PPT-safe exported family stack. `font_family` is the body/default compatibility stack, not permission to erase role differences.
 - Every non-family `typography` value is a positive finite unitless px anchor. Intermediate values need no lock row when they stay within the mapped role's anchor `±2px`. At most two occurrences of one undeclared short non-structural Hero/Display size may remain sparse; a third occurrence or any structural use requires Design Spec repair and a named anchor.
-- `icons.library` records the primary stylistic library selected from `chunk-filled`, `tabler-filled`, `tabler-outline`, or `phosphor-duotone`, or `none` when no generic bundled icons are selected. Selected `simple-icons/*` brand marks may appear alone or alongside it in `inventory` without becoming a stylistic library. The inventory records planned bundled choices, while every SVG already under `<project_path>/icons/` remains valid prepared execution material.
+- `icons.library` records the primary stylistic library selected from `chunk-filled`, `tabler-filled`, `tabler-outline`, or `phosphor-duotone`, or `none` when no generic bundled icons are selected. Selected `simple-icons/*` brand marks may appear alone or alongside it in `inventory` without becoming a stylistic library. The inventory indexes the curated synced bundled pool without assigning page usage; every SVG already under `<project_path>/icons/` remains valid prepared execution material.
 - `objective` grammar: one concise sentence preserving the deck goal and audience success condition.
 - `image_rendering` grammar: one catalog id, or `custom` with `image_rendering_behavior`.
-- `images`: `- <key>: <path> | source=<via> | pattern=<layout> | crop=<adaptive|no-crop>`; e.g. `- p04: images/a.png | source=user | pattern=#2 Left image | crop=no-crop`. Use the canonical `images/<filename>` path; `source` and `crop` exactly project §VIII, while `pattern` preserves its ordered catalog ids or normalized custom prose. The pattern remains a recommendation for Executor recall, not a geometry or realization lock. Omit unplaced sheets.
+- `images`: `- <key>: <path> | source=<via> | pattern=<layout> | crop=<adaptive|no-crop>`; e.g. `- p04: images/a.png | source=user | pattern=full-height image beside the evidence | crop=no-crop`. Use the canonical `images/<filename>` path; `source` and `crop` exactly project §VIII, while `pattern` preserves its non-empty normalized free-form suggestion and any optional hierarchical catalog ids. The pattern remains a recommendation for Executor recall, not a geometry or realization lock. Omit unplaced sheets.
 - Custom reference grammar: comma-separated exact catalog ids with no duplicates. Reference fields are valid only for `custom`; omit them for a genuinely novel direction.
 - `stroke_width` grammar: `1.5`, `2`, or `3`; present only for `tabler-outline`.
 - `page_rhythm` grammar: `P` + at least two digits (`P01`, `P100`) followed by `anchor|dense|breathing`.
-- `page_charts` grammar: `P` + at least two digits followed by a `charts_index` key; the key and `<key>.svg` must both exist.
+- `page_visualizations` grammar: `P` + at least two digits followed by
+  `chart|table`, `/`, and one canonical visualization key; the family/key must
+  resolve to one SVG through the matching live index.
+- Legacy `page_charts` grammar: `P` + at least two digits followed by one bare
+  key. Chart/Table resolves uniquely across two registries; retired Structure
+  is semantic-only. Never add this section to a new lock.
 - `pptx_masters` grammar: `<master_key>: <PowerPoint picker name>`.
 - `pptx_layouts` grammar: `<layout_key>: <master_key> | <PowerPoint layout name> | <prototype source>`.
 - `page_pptx_layouts` grammar: `P` + at least two digits followed by a declared Layout key.
@@ -107,8 +129,8 @@ Catalog-based custom example:
 ```markdown
 ## mode
 - mode: custom
-- mode_references: pyramid, narrative
-- mode_behavior: Lead each act with the decision-first clarity of pyramid, then develop it through a narrative tension-and-resolution arc.
+- mode_references: pyramid, narrative, instructional
+- mode_behavior: Open conclusion-first with pyramid, develop the risk through a narrative tension-and-resolution act, then close with an instructional action sequence.
 ```
 
 ---

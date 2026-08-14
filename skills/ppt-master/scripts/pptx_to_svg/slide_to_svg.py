@@ -42,6 +42,7 @@ from pptx_effects import (
     txbody_has_run_effects,
     unsupported_effect_metadata,
 )
+from hyperlink_contract import SHAPE_HYPERLINK_ATTR
 
 from .color_resolver import ColorPalette, find_color_elem, resolve_color
 from .chart_to_svg import CHART_URI, CHARTEX_URI, extract_native_chart_payload
@@ -57,6 +58,7 @@ from .import_diagnostics import (
     ImportDiagnostic,
     append_diagnostic,
 )
+from .hyperlinks import resolve_click_hyperlink
 from .ln_to_svg import StrokeResult, resolve_stroke
 from .ooxml_loader import (
     OoxmlPackage,
@@ -64,7 +66,12 @@ from .ooxml_loader import (
     SlideRef,
     inherited_shape_visibility,
 )
-from .pic_to_svg import MediaResolutionError, convert_blip_fill, convert_picture
+from .pic_to_svg import (
+    MediaResolutionError,
+    PictureResult,
+    convert_blip_fill,
+    convert_picture,
+)
 from .prstgeom_to_svg import GeomResult, convert_prst_geom
 from .preset_svg_markup import serialize_preset_layers
 from .shape_walker import (
@@ -149,6 +156,43 @@ class AssemblyContext:
 
     def _diagnose_color(self, code: str, message: str, fallback: str) -> None:
         self.diagnose(code, message, fallback)
+
+
+def _diagnose_picture_result(
+    ctx: AssemblyContext,
+    result: PictureResult,
+) -> None:
+    """Project recoverable picture losses into the import report."""
+    for diagnostic in result.diagnostics:
+        ctx.diagnose(
+            diagnostic.code,
+            diagnostic.message,
+            diagnostic.fallback,
+        )
+
+
+def _resolve_svg_hyperlink(
+    ctx: AssemblyContext,
+    relationship_id: str,
+    action: str,
+) -> str | None:
+    """Resolve one source-part click link or record its explicit loss."""
+    resolution = resolve_click_hyperlink(
+        ctx.slide_part.rels,
+        relationship_id,
+        action,
+        slide_index_by_part=ctx.pkg.slide_index_by_part,
+    )
+    if resolution.error is None:
+        return resolution.href
+    if ctx.strict:
+        raise ValueError(resolution.error)
+    ctx.diagnose(
+        "hyperlink-omitted",
+        resolution.error,
+        "retain the object and omit only its unsupported click link",
+    )
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -457,6 +501,7 @@ def _convert_shape(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) ->
                 media_subdir=ctx.media_subdir,
                 embed_inline=ctx.embed_images,
                 asset_name_map=ctx.asset_name_map,
+                strict=ctx.strict,
             )
         except (ValueError, MediaResolutionError) as exc:
             if ctx.strict:
@@ -467,6 +512,7 @@ def _convert_shape(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) ->
                 "omit the image fill and retain shape geometry/text",
             )
         else:
+            _diagnose_picture_result(ctx, blip_result)
             if blip_result.svg:
                 blip_image = _clip_blip_image(blip_result.svg, geom, ctx)
                 ctx.media.update(blip_result.media)
@@ -512,6 +558,11 @@ def _convert_shape(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) ->
                 fallback_lst_styles=node.inherited_lst_styles,
                 id_prefix=f"{ctx.group_id_prefix}txt",
                 id_seq=ctx.grad_seq,
+                hyperlink_resolver=lambda rid, action: _resolve_svg_hyperlink(
+                    ctx,
+                    rid,
+                    action,
+                ),
             )
         else:
             text_result = convert_txbody(
@@ -523,6 +574,11 @@ def _convert_shape(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) ->
                 fallback_lst_styles=node.inherited_lst_styles,
                 id_prefix=f"{ctx.group_id_prefix}txt",
                 id_seq=ctx.grad_seq,
+                hyperlink_resolver=lambda rid, action: _resolve_svg_hyperlink(
+                    ctx,
+                    rid,
+                    action,
+                ),
             ) if tx_body is not None else TextResult()
     except ValueError as exc:
         if ctx.strict:
@@ -752,6 +808,7 @@ def _build_geometry_xml(node: ShapeNode, sp_pr: ET.Element | None,
             ctx.palette,
             id_prefix="fx",
             id_seq=ctx.filter_seq,
+            target_rotation_degrees=node.effective_rotation,
         )
     except ValueError as exc:
         if ctx.strict:
@@ -929,6 +986,7 @@ def _convert_picture(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) 
             media_subdir=ctx.media_subdir,
             embed_inline=ctx.embed_images,
             asset_name_map=ctx.asset_name_map,
+            strict=ctx.strict,
         )
     except MediaResolutionError as exc:
         if ctx.strict:
@@ -941,23 +999,42 @@ def _convert_picture(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) 
         return _fallback_node_svg(node, ctx, top_level=top_level)
     if not result.svg:
         return ""
+    _diagnose_picture_result(ctx, result)
     ctx.media.update(result.media)
-    effect_metadata = unsupported_target_effect_metadata(
+    effect = convert_effects(
         sp_pr,
-        "picture",
+        ctx.palette,
+        id_prefix="fx",
+        id_seq=ctx.filter_seq,
+        target_rotation_degrees=node.effective_rotation,
     )
+    ctx.defs.extend(effect.defs)
+    effect_metadata = dict(effect.metadata)
     _diagnose_unsupported_effect(ctx, effect_metadata)
     clipped_svg = _clip_blip_image(result.svg, geom, ctx)
+    picture_attrs = {**_object_metadata(node, ctx), **effect_metadata}
+    group_attrs = _metadata_group_attrs(effect_metadata)
+    if effect.filter_id is not None:
+        filter_attr = f"url(#{effect.filter_id})"
+        if (
+            clipped_svg.startswith("<svg")
+            or clipped_svg.startswith("<image clip-path=")
+        ):
+            # Keep the effect outside the crop viewport so shadows and glows
+            # remain visible beyond the picture geometry in SVG previews.
+            group_attrs.append(f'filter="{filter_attr}"')
+        else:
+            picture_attrs["filter"] = filter_attr
     picture_svg = _inject_root_svg_attrs(
         clipped_svg,
-        {**_object_metadata(node, ctx), **effect_metadata},
+        picture_attrs,
     )
     return _wrap_shape_group(
         picture_svg,
         node,
         ctx,
         top_level=top_level,
-        extra_attrs=_metadata_group_attrs(effect_metadata),
+        extra_attrs=group_attrs,
     )
 
 
@@ -1181,6 +1258,11 @@ def _render_graphic_table(
         id_prefix=f"tbl{ctx.shape_seq[0]}",
         grad_seq=ctx.grad_seq,
         marker_seq=ctx.marker_seq,
+        hyperlink_resolver=lambda rid, action: _resolve_svg_hyperlink(
+            ctx,
+            rid,
+            action,
+        ),
     )
     if result.defs:
         ctx.defs.extend(result.defs)
@@ -1280,9 +1362,11 @@ def _render_graphic_preview(node: ShapeNode, ctx: AssemblyContext) -> str:
         media_subdir=ctx.media_subdir,
         embed_inline=ctx.embed_images,
         asset_name_map=ctx.asset_name_map,
+        strict=ctx.strict,
     )
     if not result.svg:
         return ""
+    _diagnose_picture_result(ctx, result)
     ctx.media.update(result.media)
     return result.svg
 
@@ -1392,7 +1476,9 @@ def _emit_background_image(
         media_subdir=ctx.media_subdir,
         embed_inline=ctx.embed_images,
         asset_name_map=ctx.asset_name_map,
+        strict=ctx.strict,
     )
+    _diagnose_picture_result(ctx, result)
     if result.media:
         ctx.media.update(result.media)
     return result.svg
@@ -1528,7 +1614,21 @@ def _wrap_shape_group(
             )
     if transform:
         attrs.append(f'transform="{transform}"')
-    return f"<g {' '.join(attrs)}>\n{inner}\n</g>"
+    group_xml = f"<g {' '.join(attrs)}>\n{inner}\n</g>"
+    if node.hyperlink_rid or node.hyperlink_action:
+        href = _resolve_svg_hyperlink(
+            ctx,
+            node.hyperlink_rid,
+            node.hyperlink_action,
+        )
+        if href is not None and '<a href=' in inner:
+            attrs.append(
+                f'{SHAPE_HYPERLINK_ATTR}="{_xml_escape(href)}"'
+            )
+            return f"<g {' '.join(attrs)}>\n{inner}\n</g>"
+        if href is not None:
+            return f'<a href="{_xml_escape(href)}">{group_xml}</a>'
+    return group_xml
 
 
 def _attrs_to_xml(attrs: dict[str, str]) -> str:

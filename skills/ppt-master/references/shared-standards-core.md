@@ -1,14 +1,32 @@
 # Shared SVG Core Standards
 
-Mandatory reference for every route that authors or regenerates slide visuals through SVG. It owns XML validity, the closed generated-authoring surface, basic converter compatibility, page closure, semantic grouping, and shared fidelity vocabulary.
+Mandatory reference for every route that authors or regenerates slide visuals through SVG. It owns XML validity, the closed generated-authoring surface, basic converter compatibility, page closure, semantic grouping, shared visual-quality defaults, and fidelity vocabulary.
 
 **Conditional module routing**:
 
 | Trigger | Load |
 |---|---|
-| Noncanonical/alpha paint, advanced line or text treatment, gradient/filter/effect, transform, freeform/radial geometry, or constructed style | [`svg-effects.md`](./svg-effects.md) |
+| Default or Quick Generate; otherwise noncanonical/alpha paint, advanced line or text treatment, gradient/filter/effect, transform, freeform/radial geometry, or constructed style | [`svg-effects.md`](./svg-effects.md) |
 | A page will use a preset pattern fill or evaluate native chart/table replacement | [`native-data-interface.md`](./native-data-interface.md) before deciding eligibility or emitting metadata |
 | `pptx_structure.mode: structured` | [`pptx-structure-interface.md`](./pptx-structure-interface.md) |
+
+**Default — shared aesthetic baseline (may be overridden by explicit user, installed template / brand, or locked / Quick-resolved visual-style requirements)**: Required / Forbidden technical contracts remain absolute. When a higher authority is silent, build clear hierarchy through typography and leading, alignment, negative space, purposeful imagery / icons, and restrained repetition before decoration. Deliberate tightness, imbalance, off-axis placement, or container-heavy structure remains valid when that authority calls for it.
+
+| Concern | Shared default |
+|---|---|
+| Text-block rhythm | Use §4.2 leading. Make the baseline step into a new paragraph visibly larger than the intra-paragraph line step; keep the extra gap between list items smaller than paragraph separation but large enough to scan each item. Repeated peer blocks share one rhythm unless their hierarchy differs. |
+| Typography roles | Use the fewest semantic text roles that preserve hierarchy, and make their differences legible at slide-thumbnail scale. Consolidate near-neighbor sizes that serve the same role; otherwise distinguish roles through a deliberate combination of size, weight, color, position, and surrounding space. |
+| Viewing-distance legibility | Resolve delivery context and viewing distance before fixing density and type scale. Preserve necessary text at a readable scale by applying only actions the active route's content and page invariants permit: restructure, shorten, split, or reflow. If none is permitted, surface the unresolved fit instead of silently miniaturizing it. Do not turn this into one universal font-size floor: captions and metadata may be smaller when their role and context remain legible. |
+| Contrast and semantic encoding | Within the active profile's fidelity boundary, keep meaning-bearing text distinguishable from its actual background. For newly authored distinctions, combine luminance, weight, scale, shape, position, or explicit labeling; color may reinforce meaning but never carry a required distinction alone. When fidelity requires preserving source-only color encoding, reproduce it rather than inventing a cue. Reserve lower-contrast treatment for genuinely secondary metadata that remains legible. |
+| Natural wrapping | Break at semantic phrase or punctuation boundaries where possible. Reflow the text frame or adjust neighboring geometry before using any permitted local size reduction. Let the final line run naturally shorter; avoid mechanically equal lines or a stranded single-character / single-word line when an earlier natural break preserves meaning. |
+| Content field | Establish the usable body frame before placing modules. Divide it into one or a small set of macro-regions from information weight and reading order: use unequal weight when the information differs, while true peers may share equal weight. Give each region its own local axes / micro-grid while retaining only the cross-region anchors the composition needs. On a dense page, let the planned content system organize that frame; create breathing room through gutters, module spacing, and intentional voids between semantic clusters. Unorganized residual space that leaves content stranded in one part of the frame is leftover blank, not negative space. |
+| Alignment and proximity | Establish shared axes from the current composition. Align related titles, copy, labels, images, and diagram nodes to those edges, centers, or baselines; group related elements more tightly than unrelated groups so spacing carries hierarchy. Break an axis only when the offset performs hierarchy, direction, or tension. |
+| Visual weight | Judge weight from area, darkness, saturation, density, stroke, image detail, and elevation together. Distribute it to support the focal path; symmetry is optional, and deliberate imbalance may create direction. |
+| Boundary strength | Match the relationship with the lightest sufficient boundary from this expressive ladder: spacing / alignment → rule / bracket → tint field → outline → filled panel → true floating layer. Peer relationships use comparable strength while focus, hierarchy, or material difference may move to a stronger treatment. The ladder is not a required sequence or per-page quota. |
+| Containers | Use a card or panel when it expresses grouping, hierarchy, boundary, capacity, or a distinct material plane. Otherwise prefer spacing, rules, or direct text / geometry; peer containers share treatment unless a semantic difference justifies contrast. An unplanned repeated web-card grid is a carrier / topology problem, not a reason to suppress meaningful borders, shapes, or containers. |
+| Titles and page chrome | Treat the semantic page title as part of the current composition rather than an automatic fixed header band; its position, scale, and relationship may change with page role while preserving the active route's content invariants. Add or retain running headers, footers, and page numbers only when they carry navigation, identity, attribution, or another explicit page job. Fidelity profiles preserve required source chrome. |
+
+**Default — active effects vocabulary (may resolve to no added technique when no visual job is diagnosed)**: Default and Quick Generate run the already-loaded [`svg-effects.md`](./svg-effects.md) §6.1 Visual Job Router before completing each page; apply a compatible technique only for a diagnosed visual job.
 
 **Fidelity labels**:
 
@@ -107,8 +125,10 @@ remain valid input and receive recommendation warnings rather than errors.
 
 Conditional properties with a required XML form stay out of inline style:
 write `filter="url(#id)"`, `clip-path="url(#id)"`, and
-`marker-start` / `marker-end` as direct attributes. `!important`, unknown CSS
-properties, blend modes, isolation, and backdrop filters fail quality check.
+`marker-start` / `marker-end` as direct attributes. Ordinary-text superscript
+and subscript likewise use only direct `baseline-shift="super|sub"` on
+`<tspan>`. `!important`, unknown CSS properties, blend modes, isolation, and
+backdrop filters fail quality check.
 
 The table registers property names, not arbitrary CSS values. Ordinary generated
 text uses a non-empty `font-family`, a finite positive unitless-px `font-size`,
@@ -136,9 +156,10 @@ Unknown or unmapped declarations fail Checker preflight and native export.
 > **PPT preset patterns and native chart/table/template metadata are
 > conditional** — see [`native-data-interface.md`](./native-data-interface.md) and [`pptx-structure-interface.md`](./pptx-structure-interface.md).
 
-DrawingML has no arbitrary per-pixel alpha-compositing path. Effects that rely
-on one, including text-knockout image fills and arbitrary alpha composites,
-must be baked into a raster asset before SVG export.
+DrawingML has no arbitrary per-pixel alpha-compositing path. A registered
+single-image text picture/texture fill follows [`svg-effects.md`](./svg-effects.md)
+§6.3; arbitrary text-knockout composites, multi-layer image text, and arbitrary
+alpha composites remain bake-required before SVG export.
 
 ---
 
@@ -171,9 +192,9 @@ diagnostic behavior are indexed in
 
 ### 1.2 Image Clipping (Conditional Contract)
 
-`clip-path` has a native picture-geometry mapping only on SVG-namespace
-`<image>` elements (plus the exact imported crop wrapper defined under Images)
-and only under this contract:
+`clip-path` maps natively only on SVG `<image>` (including an exact crop
+wrapper's inner image) under this contract. Legacy imported crops may retain
+an outer-wrapper clip as compatible input:
 
 | Concern | Required form |
 |---|---|
@@ -181,7 +202,7 @@ and only under this contract:
 | Contains exactly one direct SVG-namespace supported shape child | Multiple shapes are not composited |
 | Shape is one of: `<circle>`, `<ellipse>`, `<rect>` (optional rx/ry), `<path>`, `<polygon>` | These map to DrawingML geometry (preset or custom) |
 | No `clip-rule` or `fill-rule`, whether direct or in inline `style` | DrawingML picture geometry has no equivalent winding-rule control |
-| Used only on `<image>` or an exact imported crop wrapper | Shapes, groups, text, and generalized nested SVG targets are **forbidden** |
+| Used only on `<image>` or a compatible legacy imported crop wrapper | Shapes, groups, text, and generalized nested SVG targets are **forbidden** |
 
 | SVG clip shape | DrawingML output |
 |---|---|
@@ -371,8 +392,9 @@ complete geometric object into a native DrawingML preset through the
 deterministic fragment helper. Selection behavior lives in
 [`native-shape-authoring.md`](./native-shape-authoring.md); this section owns
 the machine contract. This compact canonical form describes the intended
-preset, frame, adjustments, and paint once, keeps only registry-generated
-visible SVG paths, and embeds no source OOXML or serialized preview fingerprint.
+preset, frame, adjustments, paint, and an optional shape effect once, keeps only
+registry-generated visible SVG paths, and embeds no source OOXML or serialized
+preview fingerprint.
 
 | Metadata / structure | Required behavior |
 |---|---|
@@ -380,6 +402,7 @@ visible SVG paths, and embeds no source OOXML or serialized preview fingerprint.
 | `data-pptx-object` | `shape` or `connector`; connector-family presets must use `connector`, and `connector` must use a connector-family preset. Authored connectors require `fill="none"` plus a visible stroke and export as unconnected `p:cxnSp`. |
 | `data-pptx-prst`, `data-pptx-frame`, `data-pptx-av-*` | Generated together from the locked registry and written once on the logical group. The frame is the helper's exact four-part, space-separated ordinary-decimal spelling and remains authoritative even when visible path bounds differ; commas, scientific notation, leading `+`, and redundant decimal spellings are rejected. |
 | Local `fill` / `stroke` plus supported paint attributes | Base paint is written once on the group; a visible stroke also carries an explicit width. Canonical page/template authoring keeps channel paint local. Compatible ancestor paint/opacity may compose under the general SVG rules and receives a recommendation warning. |
+| Optional direct `filter="url(#id)"` | Shape presets only: the helper writes one exact local reference to a direct [`svg-effects.md`](./svg-effects.md) §6.4 filter definition. It compiles once on the complete native shape; connector presets, inline style, ordinary group filters, and child-path filters remain unsupported. |
 | Ordered direct `<path>` children | Browser-visible registry layers only. Each child writes just its required path-level fill/stroke override; labels and decorations stay outside the atomic group. |
 | No carrier / wrapper / fingerprint | `data-pptx-part`, hidden geometry carriers, preview wrappers, and `data-pptx-preview-sha256` belong to expanded import/compatibility transport, not canonical project authoring. |
 
@@ -394,26 +417,31 @@ python3 ${SKILL_DIR}/scripts/preset_shape_svg.py render rightArrow \
   --adjust "adj1=val 50000"
 ```
 
+When one native effect is justified, append `--filter-id softShadow`; that id
+must already name one direct page-level §6.4 filter definition.
+
 **Hard rule — helper-only metadata**: never add or edit authored preset
 metadata or registry paths by hand. The compact helper output is atomic.
-Regenerate it when preset, frame, adjustment, fill, stroke, or stroke width
-changes. Replace the whole fragment with ordinary SVG when free contour editing
-is required.
+Regenerate it when preset, frame, adjustment, fill, stroke, stroke width, or the
+filter reference changes. Replace the whole fragment with ordinary SVG when
+free contour editing is required.
 
 Template ownership metadata is orthogonal to preset geometry. After inserting
 the complete helper output, `create-template` may add only the registered
 `data-pptx-layer`, `data-pptx-editable`, `data-pptx-carrier`, or
 `data-pptx-role` attribute needed by the surrounding structured contract. It
-must not change preset/frame/adjustment/paint metadata or any direct path.
+must not change preset/frame/adjustment/paint metadata, the filter reference, or
+any direct path.
 
 **Reusable-template boundary**: a project-owned canonical template may retain
 one complete helper-generated atomic fragment when the stock preset is an exact
-semantic match and its paint stays inside the authoring boundary below. The
-fragment is an executable exemplar and one semantic atom, not a freely editable
+semantic match and both its paint and optional effect stay inside the authoring
+boundary below. The fragment is an executable exemplar and one semantic atom,
+not a freely editable
 template primitive. It may be Slide-local, the one carrier of an `object` slot,
 or a direct Master/Layout fixed atom. An adaptation may reuse it unchanged only
-when preset, frame, adjustments, and paint are unchanged; otherwise regenerate
-the whole fragment with the helper.
+when preset, frame, adjustments, paint, and the optional filter reference are
+unchanged; otherwise regenerate the whole fragment with the helper.
 Imported, mirror, and third-party templates are never upgraded by contour
 inference.
 
@@ -422,23 +450,27 @@ fragment to stdout; export never invents its preview. The main Agent inserts
 that output into the hand-authored page or canonical reusable template. The
 helper cannot write a project, select layout, or generate a page.
 
-**Authoring paint boundary**: v1 accepts `none` or six-digit solid HEX fill and
-stroke, optional fill/stroke opacity, stroke width, line cap, and line join.
+**Authoring paint/effect boundary**: v1 accepts `none` or six-digit solid HEX
+fill and stroke, optional fill/stroke opacity, stroke width, line cap, line join,
+and one shape-only local filter id under [`svg-effects.md`](./svg-effects.md)
+§6.4.
 Normal generated pages use `spec_lock.md` for stable semantic color anchors and
 choose page-local paint from the retained Design Spec, style, and composition context.
-The test-only [`quick-test`](../workflows/profiles/quick-test.md) profile has no
-lock: keep every chosen paint value explicit in the SVG.
+The lockless [`quick-generate`](../workflows/profiles/quick-generate.md) profile
+keeps every chosen paint value explicit in the SVG.
 `create-template` authored templates take their values from the confirmed brief
 and template `design_spec.md`.
-Use ordinary SVG for gradients, patterns, filters, or other treatments outside
-this narrow contract. Registry-derived multi-path darken/lighten colors and
+Use ordinary SVG for gradients, patterns, or other treatments outside this
+narrow contract. Registry-derived multi-path darken/lighten colors and
 other contextual derivatives need no separate lock row unless they become a
 recurring named role. Mirror preserves source paint under §1.4 instead.
 
 **Validation**: quality check and export both rerender authored fragments from
 `preset + frame + adjustments + group paint` and compare every visible path and
-path-level paint override directly. Registry-path edits, geometry metadata that
-leaves those paths stale, unknown adjustments, out-of-range frames/transforms,
+path-level paint override directly. They separately validate the optional effect
+reference through §6.4. Registry-path edits, geometry metadata that leaves those
+paths stale, unknown adjustments, invalid or unresolved filter references,
+out-of-range frames/transforms,
 zero-scale transforms, and shear/skew fail closed. Export expands the validated
 compact group only in memory and reuses the lossless native-shape conversion
 path. Older authored carrier/preview fragments remain compatible as ordinary
@@ -453,7 +485,8 @@ as a grouped editable text box. Authoring v1 creates only unconnected
 `p:cxnSp`; it does not accept hand-written endpoint/site metadata. An
 `actionButton*` preset maps visual geometry only. Preset appearance never
 invents connector attachment, action behavior, navigation targets, or
-hyperlinks.
+hyperlinks. Link and navigation behavior is authored explicitly instead — see
+[`native-hyperlinks.md`](./native-hyperlinks.md).
 
 ---
 
@@ -530,7 +563,7 @@ continue without modification.
 
 ## 3. Canvas Format Quick Reference
 
-Use the already locked canvas id and exact viewBox. [`canvas-formats.md`](canvas-formats.md) owns format selection; this core owns only SVG conformance on that canvas. The test-only [`quick-test`](../workflows/profiles/quick-test.md) profile has no lock; its first SVG establishes the canvas and every remaining page must use the identical viewBox.
+Use the already locked canvas id and exact viewBox. [`canvas-formats.md`](canvas-formats.md) owns format selection; this core owns only SVG conformance on that canvas. The lockless [`quick-generate`](../workflows/profiles/quick-generate.md) profile uses its first SVG to establish the canvas; every remaining page must use the identical viewBox.
 
 ---
 
@@ -553,12 +586,12 @@ Semantic markers are minimal compiler hints. Flat pages declare one root `data-p
 
 - **Canvas authority**: New authoring writes `viewBox="0 0 W H"` with positive
   integer pixels from the lock, or from the first SVG when the explicit
-  `quick-test` profile is active. Numerically equivalent spellings and positive
+  `quick-generate` profile is active. Numerically equivalent spellings and positive
   fractional imported dimensions remain compatible; export quantizes once at
   `1 SVG px = 9,525 EMU`. Invalid/non-finite values, non-zero origin,
   non-positive size, or unsupported PowerPoint dimensions are errors. All pages
   and Layout prototypes in one normal build share the numeric canvas and match
-  `spec_lock.md canvas.viewBox`; quick-test pages match the first SVG;
+  `spec_lock.md canvas.viewBox`; quick-generate pages match the first SVG;
   standalone templates match `design_spec.md canvas_viewbox`. Optional root
   `width`/`height` do not override `viewBox`.
   Root `<svg>` transform is forbidden; nested crop and `<symbol viewBox>` keep
@@ -571,25 +604,27 @@ Semantic markers are minimal compiler hints. Flat pages declare one root `data-p
   [`../templates/icons/README.md`](../templates/icons/README.md).
 - **Local reuse**: ordinary same-document `<use>` follows §1.3.
 
-### 4.2 Conditional Editability and Package Promotion
+### 4.2 Editability, Package Promotion, and Text Leading
 
 These forms are needed only when the stated PPT behavior matters:
 
 | Desired behavior | Required form |
 |---|---|
-| One editable PPT text frame with mixed inline formatting or wrapped prose | Keep one logical paragraph in one `<text>`. Use non-positional `<tspan>` children for inline runs. Keep the first wrapped line as direct text and put each later line in a direct positioned `<tspan>` that repeats the parent `x` and uses positive relative `dy`; an all-`<tspan>` form may start with `dy="0"`. Same-size, evenly stacked lines flow in the current paragraph; a font-size change, list marker, or larger accepted gap starts another paragraph in that frame. Sibling `<text>` elements are forbidden as line breaks for one paragraph; they remain valid for semantically independent frames. |
+| One editable PPT text frame with mixed formatting or multiline prose | Use one `<text>` per logical paragraph and non-positional `<tspan>` children for inline runs. Keep the first authored line as direct text; later lines use direct positioned `<tspan>` children that repeat parent `x` with positive relative `dy`; an all-`<tspan>` form may start at `dy="0"`. Default retains these breaks without PowerPoint wrapping; `--reflow-text` may join eligible lines. A font-size change, list marker, or larger accepted gap starts another paragraph. Sibling `<text>` elements are forbidden as one paragraph's line breaks; they remain valid for independent frames. |
 | Stable object grouping or object-level animation anchor | Wrap the intended object in `<g id="...">`. Content grouping is **mandatory** per §4.3 — a top-level `<g id>` is also the animation anchor; it is not an optional convenience. |
 | Native PowerPoint background promotion | Outside structured mode, the first eligible visual layer may be a direct full-canvas `<rect>` or one inside a simple single-child group. Its fill must have a registered native mapping (solid, linear/radial gradient, or preset pattern), and it must have no transform, filter, clip, rounding, or visible stroke. Export writes the fill as Slide `p:bg`; image elements remain pictures. Structured routes use the narrower explicit solid-background ownership contract in [`pptx-structure-interface.md`](./pptx-structure-interface.md). |
-| Free-design / brand-only PowerPoint structure | Use `pptx_structure.mode: flat`. Keep every represented object Slide-local; export materializes one clean project-owned Master plus one Blank Layout from the current lock, removes stock content placeholders/Layout inventory, and retains only the standard date/footer/slide-number capability hooks. Do not author Master/Layout identities, layers, or placeholder slots. Quick-test uses the same flat object ownership but converter-default theme scaffolding because no lock exists. |
+| Free-design / brand-only PowerPoint structure | Use `pptx_structure.mode: flat`. Keep every represented object Slide-local; export materializes one clean project-owned Master plus one Blank Layout from the current lock, removes stock content placeholders/Layout inventory, and retains only the standard date/footer/slide-number capability hooks. Do not author Master/Layout identities, layers, or placeholder slots. Quick-generate uses the same flat object ownership but converter-default theme scaffolding because no lock exists. |
 | Reusable template-based PowerPoint Layout | Select one complete authoring SVG per page in `page_layouts`, declare each unique Master/Layout definition once, and assign pages through `page_pptx_layouts`. Strict preserves the prototype contract; adaptive retains its Master and uses a current or new Layout key already declared and assigned by Strategist. Construction cannot extend or mutate that mapping downstream. Non-mirror skin follows `spec_lock`. |
+
+**Default — leading by role and density (may be overridden for user, template, typeface, legibility, or locked visual-style fit)**: For direct positioned `<tspan>` rows, start multiline titles around `1.2–1.3 × font-size`, dense / small body around `1.4–1.5 ×`, ordinary body around `1.5–1.6 ×`, and large / sparse / breathing body around `1.6–2.0 ×`. These are starting ranges, not checker quotas; display headlines may be tighter when the selected style calls for it. Author the spacing as positive relative `dy`, not CSS/SVG `line-height`, which has no registered DrawingML mapping.
 
 **Hard rule — supported shape conversion**: Every PPT editability claim in this specification refers to the project converter reading `svg_output/` and emitting native DrawingML. `svg_final/` is a self-contained visual preview that may be inserted into PowerPoint as an SVG picture. PowerPoint's manual Convert-to-Shape operation is unsupported; do not narrow the authoring contract to its undocumented SVG subset.
 
 ### 4.3 Element Grouping (Mandatory)
 
-**Hard rule — root groups protect body-text layout**: Every visible direct root `<g>` declares positive root-coordinate `data-pptx-bounds="x y width height"`. Keep it when frame/native coordinates size one PowerPoint object; placeholder bounds also supply the slot frame. On flat pages, make each module zone as generous as the canvas and sibling layout allow without overlapping another module zone. Checker validates this subcanvas against the root `viewBox`, then recursively validates only estimable `<text>` descendants against it using the shared SVG-to-PPTX per-run width estimate and safety headroom. Nested groups and all shapes, images, paths, `<use>` instances, effects, and object frames are not content-boundary inputs. Per side, Checker ignores text/bounds overflow through `1px`, warns through `5%` of the containing boundary dimension, and fails above `5%`. Bounds do not clip or reflow.
+**Hard rule — root groups protect body-text layout**: Every visible direct root `<g>` declares positive root-coordinate `data-pptx-bounds="x y width height"`. Keep it when frame/native coordinates size one PowerPoint object; placeholder bounds also supply the slot frame. On flat pages, make each module zone as generous as the canvas and sibling layout allow without overlapping another module zone. Checker validates this subcanvas against the root `viewBox`, then recursively validates only estimable `<text>` descendants against it using the shared SVG-to-PPTX per-run width estimate and DrawingML wrapping headroom. It validates every estimable visible text carrier directly against the root `viewBox` with the same per-run estimate before that headroom. Nested groups and all shapes, images, paths, `<use>` instances, effects, and object frames are not module-boundary inputs. Per side, Checker ignores overflow through `1px`; module-boundary overflow warns through `5%` and fails above `5%`, while any larger root-`viewBox` text overflow fails. Bounds do not clip or reflow; unestimable visible text receives an advisory warning. The only page-boundary exception is a wholly off-canvas direct-root Morph endpoint marked `data-pptx-morph-staging="true"`; its own module bounds still apply, retained Morph uses an explicit pair, and the marker never excuses partial page overflow.
 
-Wrap each logical Slide-local body unit in one descriptive top-level `<g id>`; group count follows the page's semantic units, and each group becomes one animation step when animation is enabled. Nested implementation groups may remain anonymous and need no bounds; any nested bounds are ignored. Flat pages use ordinary groups; structured slots already qualify, while titles, direct atomic Master/Layout elements, and canvas-level static framing—including background images and full-canvas scrim/decoration rectangles—may remain root primitives. On flat pages, give such static framing a stable `id` plus `data-pptx-role="background"` / `"decoration"`; never add a `<g>` solely to silence an ungrouped-element advisory.
+Wrap each logical Slide-local body unit in one descriptive top-level `<g id>`; group count follows the page's semantic units, and each group becomes one stable animation target when animation is enabled. Generic deck-wide animation gives that target one step; an explicit animation sidecar may assign it several ordered effects. Nested implementation groups may remain anonymous and need no bounds; any nested bounds are ignored. Flat pages use ordinary groups; structured slots already qualify, while titles, direct atomic Master/Layout elements, and canvas-level static framing—including background images and full-canvas scrim/decoration rectangles—may remain root primitives. On flat pages, give such static framing a stable `id` plus `data-pptx-role="background"` / `"decoration"`; never add a `<g>` solely to silence an ungrouped-element advisory.
 
 **Reference — not a constraint**: A top-level semantic group may contain
 descriptive nested `<g>` edit groups when its internal elements form useful
@@ -646,8 +681,8 @@ separate parent content group; never put them inside the preset group itself.
 
 The normal serial post-processing and export workflow belongs to
 [`generate-pptx.md`](../workflows/generate-pptx.md) Step 7. The explicit
-test-only exception belongs to
-[`quick-test.md`](../workflows/profiles/quick-test.md). This file defines SVG
+direct-generation exception belongs to
+[`quick-generate.md`](../workflows/profiles/quick-generate.md). This file defines SVG
 authoring boundaries and intentionally does not mirror commands, flags, or
 output behavior.
 

@@ -19,9 +19,12 @@ Maintainer-only inventory for adding, moving, or removing workflow documents. Ru
 
 | ID | Class | Path | Parent / lifecycle slot |
 |---|---|---|---|
+| `image-to-pptx` | Generation profile | [`profiles/image-to-pptx.md`](./profiles/image-to-pptx.md) | Codex-supported, Quick-only page-frame normalization plus layered reconstruction |
 | `beautify-pptx` | Generation profile | [`profiles/beautify-pptx.md`](./profiles/beautify-pptx.md) | Generate PPTX |
-| `apply-template-workspace` | Template-input stage | [`stages/apply-template-workspace.md`](./stages/apply-template-workspace.md) | Generate Step 3 |
+| `quick-generate` | Generation profile | [`profiles/quick-generate.md`](./profiles/quick-generate.md) | Generate PPTX direct SVG-to-PPTX short circuit |
+| `apply-template-workspace` | Template-input stage | [`stages/apply-template-workspace.md`](./stages/apply-template-workspace.md) | Non-free Default Stage-1 selection after confirmation, or Quick direct exact-root input |
 | `create-brand` | Template child workflow | [`create-template/create-brand.md`](./create-template/create-brand.md) | Create Template |
+| `create-style` | Template child workflow | [`create-template/create-style.md`](./create-template/create-style.md) | Create Template |
 | `create-layout` | Template child workflow | [`create-template/create-layout.md`](./create-template/create-layout.md) | Create Template |
 | `create-deck` | Template child workflow | [`create-template/create-deck.md`](./create-template/create-deck.md) | Create Template |
 | `topic-research` | Factual-preparation stage | [`stages/topic-research.md`](./stages/topic-research.md) | Inside Generate Step 1 |

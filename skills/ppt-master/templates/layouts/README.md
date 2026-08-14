@@ -44,14 +44,26 @@ kind of rule is never a mirror operation.
 
 ---
 
-## Trigger and identity boundary
+## Selection and identity boundary
 
-Selection uses the common explicit-path trigger in
-[`generate-pptx`](../../workflows/generate-pptx.md) Step 3. Supplying a bare ID
-or reading the discovery index does not trigger template use. The conditional
+Selection follows the parent README's Default Stage-1
+[`generate-pptx`](../../workflows/generate-pptx.md) template-choice contract.
+Its Layout choices come only from `layouts_index.json`; no
+directory scan or bare-ID/style-phrase match is allowed. A supplied exact root
+appears in the same selector, defaults Stage 1 to template mode, and preselects
+that specific candidate only when it is the sole supplied root. Registered
+exact roots are `library`; other exact roots remain `explicit`.
+Choosing and confirming an entry runs the conditional
 [`apply-template-workspace`](../../workflows/stages/apply-template-workspace.md)
-stage owns path normalization, compatibility checks, installation, and fusion.
-This file owns the Layout schema and its identity/application boundary.
+stage, which owns path normalization, compatibility checks, installation, and
+installation after Stage 1 and before Stage 2. Template-aware reading begins in final Stage 2 from the
+installed project-local copy.
+Quick applies a supplied exact Layout root directly and otherwise uses free
+design. It uses installed prototypes as flat authoring inputs; reusable
+native Master/Layout compilation remains a default lock-backed capability.
+This file owns the Layout schema and its identity/application boundary. Chat
+discovery reads the same index and returns exact roots; a bare ID never resolves
+implicitly.
 
 ---
 
@@ -146,3 +158,5 @@ omitted.
 General SVG/PPT rules remain authoritative in
 [`shared-standards-core.md`](../../references/shared-standards-core.md) and
 [`pptx-structure-interface.md`](../../references/pptx-structure-interface.md).
+See [`styles/`](../styles/) when reusable method and visual direction should be
+combined with this structure without becoming identity truth.

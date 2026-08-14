@@ -4,9 +4,10 @@
 
 Use this reference during Executor SVG construction or project-owned canonical
 template maintenance when basic primitives, one standard PowerPoint shape, or
-multiple closed shapes can express the intended object. Prefer, in order:
+supported shape/text operands can express the intended object. Prefer, in order:
 editable basic primitives, one exact Office preset, then a PowerPoint-style
-Boolean result. Hand-authored freeform geometry is allowed only when those
+Boolean result from closed shapes and/or resolvable text. Hand-authored freeform
+geometry is allowed only when those
 constructions cannot faithfully express the object. Neither helper writes a
 page. The preset helper does not create the shape's own `p:txBody`; keep visible
 text outside the atomic fragment.
@@ -24,7 +25,7 @@ Apply this decision order before drawing any new geometric contour.
 | Straight relationship, divider, or leader | Write `<line>`; use a registered marker only when direction is meaningful. |
 | One DrawingML preset exactly expresses the intended object | Run `preset_shape_svg.py render`, then insert its complete stdout fragment into the hand-authored page or canonical template. |
 | A stock `bentConnector*` / `curvedConnector*` contour exactly expresses a bent or curved relationship and endpoint attachment is not required | Run `preset_shape_svg.py render --object-kind connector`; the result is an unconnected native Connector shape. |
-| Two or more closed authored shapes require Union, Combine, Fragment, Intersect, or Subtract | Run `shape_boolean_svg.py render`, then replace the operands with every stdout path; the result remains ordinary editable custom geometry. |
+| Two or more supported closed-shape / resolvable-text operands require Union, Combine, Fragment, Intersect, or Subtract | Run `shape_boolean_svg.py render`, then replace the operands with every stdout path; the result remains ordinary editable custom geometry. |
 | Basic primitives, one preset, and Boolean materialization cannot faithfully express the visual meaning or contour | Write ordinary `<path>` / `<polygon>` geometry; export keeps it as editable custom geometry. |
 | The shape only resembles a preset | Never infer a preset; continue to the Boolean gate, then use freeform only if no faithful construction exists. |
 | Mirror/preserve input already owns native-shape metadata | Keep the existing object and metadata; never reselect its preset. |
@@ -32,7 +33,7 @@ Apply this decision order before drawing any new geometric contour.
 **Hard rule**: `preset_shape_svg.py` is the only authoring entry for
 `data-pptx-authoring="preset"`. Never add `data-pptx-prst`, frame, adjustment,
 or registry path data by hand. Insert the helper's complete compact `<g>` and
-rerun the helper whenever its geometry or paint changes.
+rerun the helper whenever its geometry, paint, or filter reference changes.
 
 ---
 
@@ -54,7 +55,7 @@ paths or contours, or upgrade ordinary SVG during export.
 | Stock bent / curved relationship contour | `bentConnector*`, `curvedConnector*` | Prefer when the contour fits and endpoint attachment is not required. The authored object is an unconnected native Connector, so moving nodes does not reroute it. |
 | Stock callout | `wedgeRectCallout`, `wedgeRoundRectCallout`, `wedgeEllipseCallout`, `cloudCallout` | For a brand-specific or custom tail, continue through the Boolean gate; use freeform only if the result still cannot be expressed faithfully. |
 | Stock ribbon or scroll | `ribbon*`, `ellipseRibbon*`, `verticalScroll`, `horizontalScroll` | Select only when the stock contour is visually acceptable. |
-| Standalone math symbol | `mathPlus`, `mathMinus`, `mathMultiply`, `mathDivide`, `mathEqual`, `mathNotEqual` | Inline formulas and prose symbols remain text/formula assets. |
+| Standalone math symbol | `mathPlus`, `mathMinus`, `mathMultiply`, `mathDivide`, `mathEqual`, `mathNotEqual` | Use only when the symbol itself is a diagram shape; simple notation remains text, while non-trivial inline or block mathematics follows [`native-formula.md`](./native-formula.md). |
 | Literal Office symbol | `heart`, `sun`, `moon`, `lightningBolt`, `gear6`, `gear9` | Never replace an icon required by `spec_lock.icons`. |
 
 Use registry search for a less common literal shape:
@@ -99,6 +100,10 @@ python3 ${SKILL_DIR}/scripts/preset_shape_svg.py render rightArrow \
   --adjust "adj1=val 50000"
 ```
 
+When one native effect is justified, append `--filter-id softShadow`.
+`softShadow` must already be one direct page-level `<defs><filter>` id under
+[`svg-effects.md`](./svg-effects.md) §6.4. Omit the option otherwise.
+
 For a stock bent / curved contour that does not require endpoint attachment:
 
 ```bash
@@ -132,7 +137,7 @@ the locked preset registry.
 
 | Component | Ownership |
 |---|---|
-| Logical `<g data-pptx-authoring="preset">` | Stable id, object kind, preset, frame, adjustments, and explicit local base paint. |
+| Logical `<g data-pptx-authoring="preset">` | Stable id, object kind, preset, frame, adjustments, explicit local base paint, and an optional helper-authored shape filter reference. |
 | Direct `<path>` children | Ordered browser-visible registry layers. A child writes only a path-specific fill/stroke override when the preset requires one. |
 | Deliberately absent transport fields | No hidden carrier, preview wrapper, `data-pptx-part`, or stored fingerprint belongs in project-authored SVG. Those fields remain part of expanded PPTX import/round-trip transport. |
 
@@ -153,7 +158,8 @@ atom. It may be Slide-local, the single carrier of an `object` slot, or a direct
 Master/Layout fixed atom. This narrow exception does not permit ordinary nested
 `<g>` structures in Master/Layout layers or placeholder carriers. The template
 workflow may add the registered structural ownership attributes to the complete
-helper group; it still must not alter preset metadata, paint, or direct paths.
+helper group; it still must not alter preset metadata, paint, the filter
+reference, or direct paths.
 
 **Frame coordinate space**: `--frame x y w h` is expressed in the coordinate
 space where you insert the fragment. At the page root that is page coordinates;
@@ -164,17 +170,17 @@ the shape off-canvas. Keep the helper's exact space-separated ordinary-decimal
 spellings.
 
 **Regeneration rule**: rerun the helper when preset, frame, adjustment, fill,
-stroke, or stroke width changes. Moving, scaling, rotating, or flipping the
-complete logical group is allowed; zero-scale transforms and shear/skew are
-forbidden, and the transformed frame must remain inside DrawingML's coordinate
-range. Stroke width must remain inside DrawingML's line-width range. To freely
-edit the contour, replace the whole fragment with ordinary SVG rather than
-modifying a generated direct path.
+stroke, stroke width, or the filter id changes. Moving, scaling, rotating, or
+flipping the complete logical group is allowed; zero-scale transforms and
+shear/skew are forbidden, and the transformed frame must remain inside
+DrawingML's coordinate range. Stroke width must remain inside DrawingML's
+line-width range. To freely edit the contour, replace the whole fragment with
+ordinary SVG rather than modifying a generated direct path.
 
 For a canonical reusable template, the complete helper fragment may remain as
 an executable exemplar. A final-page adaptation may copy it unchanged only
-when all registry metadata, frame, adjustments, and paint remain unchanged;
-otherwise regenerate the complete compact group.
+when all registry metadata, frame, adjustments, paint, and the optional filter
+reference remain unchanged; otherwise regenerate the complete compact group.
 
 ---
 
@@ -186,14 +192,17 @@ otherwise regenerate the complete compact group.
 | Connector attachment | Authoring helper v1 creates an unconnected `p:cxnSp` and does not accept endpoint/site metadata. Do not hand-add it. The imported-shape contract may preserve an attachment that already exists in a source PPTX; creating a new attached connector is currently unsupported. |
 | Action button behavior | `actionButton*` presets map visual geometry only. No action, navigation target, or hyperlink is created automatically. |
 | Gradient/pattern paint | Authoring helper v1 accepts solid HEX paint only. Use ordinary SVG when a complex paint treatment is essential. |
+| Shadow/glow | Shape presets may reference one existing [`svg-effects.md`](./svg-effects.md) §6.4 filter through `--filter-id`; it applies once to the complete native shape. Connector presets, multiple effects, child-path filters, and other effect graphs remain unsupported. |
 | Multi-path darken/lighten | Direct visible layers use the shared normalized paint behavior from the PPTX importer. Their registry-derived HEX values are authorized derivatives of the selected base color and need no separate lock row. |
 | Expanded compatibility | Existing helper-authored carrier/preview fragments remain readable as ordinary Slide-local input and receive a non-blocking migration warning; they do not become structured fixed atoms or object-slot carriers. Imported expanded fragments remain the lossless mirror/preserve form. |
 | External edits | Any registry-path, style, or semantic mismatch fails quality check and export; regenerate the fragment. |
 
 **Validation**: `svg_quality_checker.py` independently rerenders every compact
 authored preset from registry metadata and compares its direct visible paths
-and paint. The exporter performs the same validation, then expands the compact
-group only in memory to reuse the lossless native-shape conversion path.
+and paint. It also validates the optional shape filter through the shared
+[`svg-effects.md`](./svg-effects.md) §6.4 contract. The exporter performs the
+same validation, then expands the compact group only in memory to reuse the
+lossless native-shape conversion path.
 Compatible expanded authored input remains under its separate carrier/preview
 freshness contract.
 
@@ -201,7 +210,7 @@ freshness contract.
 
 ## 6. Shape Boolean Materialization
 
-**Trigger**: Current page construction has two or more closed vector operands
+**Trigger**: Current page construction has two or more supported shape/text operands
 whose faithful result calls for PowerPoint-style Union, Combine, Fragment,
 Intersect, or Subtract. A §IX `Native shape suggestion` is a semantic candidate,
 not a prerequisite or tool command; Executor may adopt, adapt, or decline it
@@ -217,7 +226,7 @@ python3 ${SKILL_DIR}/scripts/shape_boolean_svg.py render <svg-file> \
 
 | Concern | Contract |
 |---|---|
-| Sources | Closed `path`, `polygon`, `rect`, `circle`, `ellipse`, or one validated compact authored shape preset. Open ordinary geometry, connectors, ordinary groups, text, images, definitions, and nested SVG viewports fail closed. |
+| Sources | Closed `path`, `polygon`, `rect`, `circle`, `ellipse`, one validated unfiltered compact authored shape preset, or supported horizontal implicit-LTR direct `<text>` with a resolvable exact OpenType weight/style (`--font-dir` adds search roots). Text becomes glyph geometry and is no longer editable text. A filtered preset is not a Boolean operand; materialize the geometry without the effect, then reapply one supported filter to the result. Open geometry, groups, nested text, images, definitions, and nested SVG viewports fail closed. |
 | Primary shape | The first `--source` supplies result paint. For `subtract`, all later operands are removed from that primary geometry. Explicit paint flags override only their named channels. |
 | Coordinates | Ancestor and local transforms are baked into SVG-root coordinate space. Place stdout in the primary operand's z-order with no additional transform; never reinsert it under an original transformed ancestor. Root-coordinate space does not require each result path to be a direct `<svg>` child. |
 | Placement | Ordinary Slide-local results belong in the applicable untransformed direct-root semantic `<g>` with its normal `id` / `data-pptx-bounds`. Master/Layout results remain direct-root path atoms and redeclare `data-pptx-layer`. One non-fragment result may be the direct `data-pptx-carrier="true"` child of an `object` slot. |
@@ -258,9 +267,8 @@ reads flat no matter how strong the contrast.
 Keep every stop on one hue and vary only lightness, hold one light direction for
 the whole page, and remove strokes so adjacent facets meet cleanly. For a
 cylinder, apply the alternating ramp across the body and cap it with an ellipse
-carrying its own shallower ramp. This is the shape-level twin of
-[`image-layout-patterns.md`](./image-layout-patterns.md) `#91`, which applies the
-same idea across separate facets of a folded form.
+carrying its own shallower ramp. The same light logic applies across separate
+facets of any folded form.
 
 ### 7.2 Reflection without a reflection effect
 
@@ -301,7 +309,7 @@ but the four jobs they normally do are all reachable with gradients:
 | Contact shadow under an object | Ellipse filled with a `radialGradient` from dark-transparent at the centre to fully transparent at the rim |
 | Spotlight / stage pool | Cone or ellipse filled with a gradient fading to transparent at its far end, at low opacity over the scene |
 | Object dissolving into the page | Overlay a rectangle whose gradient runs from transparent to the exact page background hex |
-| Hiding an object while keeping it live | Full transparency, or a background-registered fill ([`image-layout-patterns.md`](./image-layout-patterns.md) `#95`) |
+| Hiding an object while keeping it live | Full transparency, or a background-registered fill ([`image-layout-patterns.md`](./image-layout-patterns.md) `#M1-08`) |
 
 A radial or linear alpha ramp reads the same as a feathered edge at slide scale
 and, unlike a filter, exports intact. Never approximate a soft edge with a stack
