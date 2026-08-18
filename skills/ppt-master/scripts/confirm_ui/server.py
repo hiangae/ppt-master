@@ -134,7 +134,7 @@ _ICON_PREVIEW_SAMPLES = {
 # base range so stale preview tabs cannot address a later Confirm UI process.
 # Concurrent Confirm UI sessions advance while explicit ``--port`` remains exact.
 DEFAULT_PORT = 5050
-PUBLIC_HOST = '127.0.0.1'
+PUBLIC_HOST = '0.0.0.0'
 STARTUP_TIMEOUT = 10
 
 # Default --wait budget, kept just under the 600s Bash-tool ceiling so the
@@ -1258,7 +1258,7 @@ def _localized_text_present(candidate: dict, field: str) -> bool:
     """Return whether a candidate carries non-empty localized prose."""
     return any(
         isinstance(candidate.get(key), str) and bool(candidate[key].strip())
-        for key in (field, f'{field}_zh', f'{field}_zh_tw', f'{field}_en', f'{field}_ja')
+        for key in (field, f'{field}_zh', f'{field}_zh_tw', f'{field}_en', f'{field}_ja', f'{field}_ko')
     )
 
 
@@ -2292,6 +2292,7 @@ def _build_catalogs() -> dict:
             entry['label'] = name
             entry.setdefault('label_zh', name)
             entry.setdefault('label_en', name)
+            entry.setdefault('label_ko', name)
         if not entry.get('use_en') and fmt.get('use_case'):
             entry['use_en'] = fmt['use_case']
         canvas.append(entry)
