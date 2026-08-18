@@ -739,13 +739,195 @@
             on: "開",
             option_prefix: "方案",
             error_retry: "出錯，請重試"
+        },
+        ko: {
+            page_title: "PPT Master - Confirm Design",
+            topbar_hint: "Answer the open questions, or pick and customize recommendations, then continue.",
+            stage_anchors: "Stage 1 · Communication contract",
+            stage_final_plan: "Stage 2 · Final plan & production",
+            loading: "Loading…",
+            load_error: "Could not load the current recommendation stage. The AI must write it before launch.",
+            btn_confirm: "Confirm",
+            btn_confirm_contract: "Confirm contract & continue →",
+            btn_confirm_final_plan: "Confirm final plan →",
+            deriving: "Generating the downstream options from your choices…",
+            template_selection_required: "Choose free design or use templates. When using templates, select at least one workspace.",
+            connection_lost: "Connection to the confirm server was interrupted; retrying. If this keeps failing, return to the chat for confirmation.",
+            confirmed_title: "✓ Confirmed",
+            confirmed_hint: "Your choices are saved. You can close this page and return to the chat.",
+            lang_toggle_title: "Switch language",
+            sec_template_choice: "Design basis",
+            template_choice_hint: "Choose how this deck should establish its design system.",
+            template_free_title: "Design from the current content",
+            template_free_desc: "Use no reusable template workspace. The Strategist will derive the visual system from this project.",
+            template_use_title: "Use templates",
+            template_use_desc: "Select one or more reusable Brand, Style, Layout, Deck, or specified workspaces.",
+            sec_template_library: "Template combination",
+            template_library_hint: "Choose at most one registered template for each type. Brand, Style, Layout, and Deck can be combined.",
+            sec_template_explicit: "Specified templates",
+            template_explicit_hint: "Choose at most one exact workspace supplied for this run. Its source path is shown for verification.",
+            template_kind_brand: "Brand",
+            template_kind_style: "Style",
+            template_kind_layout: "Layout",
+            template_kind_deck: "Deck",
+            template_source_library: "Library",
+            template_source_explicit: "Specified path",
+            template_source_path: "Source path",
+            template_select_none: "None",
+            template_none_registered: "No registered templates",
+            template_none_explicit: "No specified templates for this run",
+            sec_canvas: "Canvas format",
+            sec_pages: "Page count",
+            sec_audience: "Target audience",
+            sec_communication: "What this presentation must accomplish",
+            sec_delivery: "How it will be used and what must remain",
+            sec_narrative: "Narrative direction",
+            sec_visual: "Visual direction",
+            sec_color: "Color scheme",
+            sec_icons: "Icon usage",
+            sec_type: "Typography",
+            sec_images: "Image usage",
+            sec_image_production: "Image production",
+            sec_proactive_execution: "Proactive execution",
+            sec_mode: "Generation mode",
+            sec_refine: "Review the Design Spec first",
+            sec_design_directions: "Coherent design directions",
+            design_directions_hint: "The recommended complete direction is applied first. Choose another or fine-tune the projected fields below; use Restore to return an adjusted direction to its authored bundle.",
+            direction_active: "Applied",
+            direction_adjusted: "Adjusted",
+            direction_apply_hint: "Click to apply this complete direction.",
+            direction_restore: "Restore authored direction",
+            scheme_component_options: "Project-specific custom choices · select a card to edit",
+            sec_template_application: "Template application",
+            template_application_hint: "The AI recommends how to apply the installed template to this deck. Revise the plan directly in natural language.",
+            placeholder_template_application: "Describe which template pages or prototypes to use, skip, repeat, or reorder; what must stay; and what may be replaced or reorganized.",
+            sub_mode: "Narrative mode",
+            sub_visual: "Visual style",
+            sub_divergence: "Material divergence (how freely to reshape vs. stay close to the source)",
+            placeholder_divergence: "In your words — e.g. \"stick closely to the document\" / \"freely restructure and expand within the source\". Leave blank for a balanced default.",
+            communication_intent: "What should this presentation accomplish?",
+            communication_intent_hint: "Open answer — combine any that apply: inform, explain, persuade, decide, align, teach, report/account, mobilize, or leave a record/hand-off. Describe priority or sequence when useful; do not choose labels.",
+            placeholder_communication_intent: "e.g. Report progress and surface risk first, then secure a decision on the next investment.",
+            audience_outcome: "Desired audience outcome / success condition",
+            placeholder_audience_outcome: "What should the audience know, understand, believe, decide, or do afterward?",
+            core_message: "Core message / decision ask / action",
+            placeholder_core_message: "Which claims, requests, or actions must land even if little else is remembered?",
+            delivery_context: "Delivery context (name the primary)",
+            delivery_context_hint: "Distinguish presenter-led, reader-led, hybrid, or recorded/self-running. For hybrid use, state which mode leads and what secondary use must still work.",
+            placeholder_delivery_context: "e.g. Primary: presenter-led 20-minute leadership review. Secondary: reader-led approval copy shared afterward.",
+            artifact_afterlife: "Artifact afterlife",
+            placeholder_artifact_afterlife: "e.g. approval, review, audit, archive, hand-off, or reuse; leave blank when no later use is expected.",
+            stage1_current_value_hint: "Editable fields contain recommendations. Keep, revise, or clear them; confirmation saves the current text exactly, including blank values.",
+            content_divergence_locked_hint: "This profile preserves the source wording and page structure, so this field is fixed.",
+            custom: "Custom",
+            custom_placeholder: "Type your own…",
+            ai_custom_candidate: "AI custom proposal",
+            ai_custom_candidate_hint: "Always visible for comparison. It is not selected by default; select it to edit.",
+            custom_behavior_required: "The selected AI custom proposal cannot be blank.",
+            custom_color_required: "Describe the custom color scheme before continuing.",
+            design_system_required: "Choose a complete palette and typography system before continuing.",
+            mode_behavior_placeholder: "Describe the act sequence, title voice, page rhythm, and presentation posture.",
+            visual_style_behavior_placeholder: "Describe shape language, composition, decoration density, whitespace, typography character, and texture.",
+            recommended: "Recommended",
+            placeholder_audience: "Who is this deck for?",
+            placeholder_pages: "e.g. 12-15",
+            hex_override: "Custom HEX override:",
+            image_ai_path: "AI image source",
+            image_strategy: "Generated image style",
+            image_strategy_empty: "No preset style references are available. You can still use a custom style.",
+            image_strategy_required: "Choose a generated-image preset or describe a custom style.",
+            image_strategy_invalid: "The selected generated-image preset is not available.",
+            image_strategy_select_placeholder: "Choose a generated-image preset…",
+            image_strategy_recommended_group: "Recommended for this deck",
+            image_strategy_all_group: "All preset styles",
+            image_strategy_rendering: "Rendering",
+            image_strategy_visual: "Visual",
+            image_strategy_mood: "Mood",
+            image_strategy_ai_custom: "AI custom proposal",
+            image_strategy_ai_custom_desc: "A novel or multi-reference rendering proposal. Select it to edit.",
+            image_strategy_custom_placeholder: "Describe the exact generated-image direction, subjects, composition, style cues, or things to avoid.",
+            image_strategy_reference_hint: "Reference images show rendering only. Final AI images inherit the deck color scheme selected above.",
+            image_strategy_no_reference: "No reference image for this custom choice.",
+            image_source_summary: "Selected image sources",
+            image_production_hint: "Image sources and rendering are selected above. Resolve only the production path here.",
+            image_usage_notes: "Additional image requirements",
+            image_usage_notes_placeholder: "e.g. realistic handwashing scenes; avoid cartoon germs; keep product photos untouched.",
+            image_usage_required: "Select at least one image usage option.",
+            image_usage_none_exclusive: "No images cannot be combined with other image options.",
+            proactive_execution_hint: "These defaults apply only when you have not explicitly instructed otherwise. Your latest explicit instruction always takes priority.",
+            proactive_speaker_notes: "Proactively generate speaker notes",
+            proactive_speaker_notes_desc: "On by default. The agent generates speaker notes without a separate request.",
+            proactive_custom_animations: "Proactively create custom animations",
+            proactive_custom_animations_desc: "Off by default. Strategist motion suggestions remain available; turn this on to have the agent create custom animations without a separate request.",
+            proactive_narration_audio: "Proactively generate narration audio",
+            proactive_narration_audio_desc: "Off by default. This raw choice does not rewrite the speaker-notes toggle; the Strategist resolves narration's effective notes dependency in the Design Spec.",
+            font_heading: "Heading",
+            font_body: "Body",
+            font_selection: "Font selection",
+            primary_language_font: "Primary-language font",
+            english_font: "English font",
+            font_picker_hint: "Choosing a recommendation fills these selectors. Changing any font marks the typography as customized.",
+            other_installed_font: "Other installed font…",
+            other_font_placeholder: "Exact installed font name",
+            customized: "Customized",
+            font_body_size: "Body baseline size",
+            font_body_size_hint: "All type sizes derive from this body baseline.",
+            body_size_unit_relation: "SVG px to PPT pt: 1px = 0.75pt.",
+            body_size_pt_hint: "Approximately {pt} pt (1px = 0.75pt; saved as px).",
+            role_size_pt_hint: "≈ {pt} pt",
+            body_size_hint_canvas: "This canvas suggests ~{lo}–{hi}px (from its effective canvas span).",
+            body_size_hint_purpose: "This reading mode recommends {def}px — one fixed size, not a range.",
+            body_size_hint_oor: "(Current value is outside the usual range for this canvas — check the unit is right and that it fits.)",
+            delivery_purpose: "Reading mode",
+            delivery_purpose_hint: "Choose where the meaning lives: read-close decks explain themselves with complete sentences and detail; presenter-led decks use one idea, concise claims, and visual evidence.",
+            size_override: "Per-role size override:",
+            size_role_title: "title",
+            size_role_subtitle: "subtitle",
+            size_role_annotation: "annotation",
+            custom_typography: "Custom typography",
+            custom_color: "Custom color",
+            custom_color_placeholder: "Describe your colors in words, e.g. deep navy primary, warm orange accent, white background — or paste HEX values…",
+            role_background: "bg",
+            role_secondary_bg: "2nd bg",
+            role_primary: "primary",
+            role_accent: "accent",
+            role_secondary_accent: "2nd accent",
+            role_body_text: "body text",
+            cjk: "CJK",
+            latin: "Latin",
+            sample_heading_cjk: "主题方案标题",
+            sample_heading_latin: "Presentation Title",
+            sample_body_cjk: "关键信息摘要",
+            sample_body_latin: "Key message summary",
+            style_preview_label: "Overall impression (color + typography + icons)",
+            style_preview_body: "· rough feel only, not the actual slide layout",
+            no_icons: "No icons",
+            preview_big_title: "Big Title",
+            preview_section_title: "Section Title",
+            preview_latin_title: "Section Title",
+            preview_body_intro: "Body copy shows the baseline text rhythm and contrast.",
+            preview_latin_body: "Body text sample for checking Latin typography.",
+            preview_point_1_title: "Body content",
+            preview_point_1_text: "Use this area to judge paragraph density and line spacing.",
+            preview_point_2_title: "Key point",
+            preview_point_2_text: "Icons are placed next to real text instead of floating alone.",
+            preview_point_3_title: "Conclusion",
+            preview_point_3_text: "The combination should stay readable at presentation scale.",
+            mode_continuous_desc: "Generate the whole deck in one pass.",
+            mode_split_desc: "Stop after the spec; resume SVG generation in a fresh window.",
+            refine_off_desc: "Write the Design Spec and execution lock in sequence, then auto-proceed.",
+            refine_on_desc: "Stop after the Design Spec. Revise any part in chat; approval then creates the execution lock and continues generation.",
+            off_default: "Off",
+            on: "On",
+            option_prefix: "Option",
+            error_retry: "Error - retry"
         }
     };
 
     var LANG = (function () {
         try {
             var stored = window.localStorage.getItem("ppt_lang");
-            if (stored === "zh" || stored === "en" || stored === "ja" ||
+            if (stored === "ko" || stored === "zh" || stored === "en" || stored === "ja" ||
                     stored === "zh-TW") return stored;
         } catch (e) { /* ignore */ }
         var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
@@ -754,6 +936,7 @@
             if (/\bhant\b/.test(nav) || /\b(tw|hk|mo)\b/.test(nav)) return "zh-TW";
             return "zh";
         }
+        if (nav.indexOf("ko") === 0) return "ko";
         if (nav.indexOf("ja") === 0) return "ja";
         return "en";
     })();
@@ -768,10 +951,11 @@
     // Entries are FIELD SUFFIXES, not BCP-47 tags: "zh-TW" data lives in
     // `<base>_zh_tw` keys, so a hyphenless suffix is used here and in langField().
     var LANG_FALLBACK = {
-        zh: ["zh", "en", "ja", "zh_tw"],
-        en: ["en", "zh", "ja", "zh_tw"],
-        ja: ["ja", "en", "zh", "zh_tw"],
-        "zh-TW": ["zh_tw", "zh", "en", "ja"]
+        ko: ["ko", "zh", "en", "ja", "zh_tw"],
+        zh: ["ko", "zh", "en", "ja", "zh_tw"],
+        en: ["ko", "en", "zh", "ja", "zh_tw"],
+        ja: ["ko", "ja", "en", "zh", "zh_tw"],
+        "zh-TW": ["ko", "zh_tw", "zh", "en", "ja"]
     };
     // Suffix used to look up localized catalog/recommendation fields.
     var LANG_FIELD = { "zh-TW": "zh_tw" };
@@ -781,26 +965,26 @@
     }
     var IMAGE_COMPARISON_LABELS = {
         rendering: {
-            "vector-illustration": { zh: "矢量插画", zh_tw: "向量插畫", en: "Vector illustration", ja: "ベクターイラスト" },
-            flat: { zh: "扁平插画", zh_tw: "扁平插畫", en: "Flat illustration", ja: "フラットイラスト" },
-            "3d-isometric": { zh: "3D 等距", zh_tw: "3D 等距", en: "3D isometric", ja: "3Dアイソメトリック" },
-            "digital-dashboard": { zh: "数字仪表盘", zh_tw: "數位儀表板", en: "Digital dashboard", ja: "デジタルダッシュボード" },
-            "corporate-photo": { zh: "企业摄影", zh_tw: "企業攝影", en: "Corporate photo", ja: "企業写真" },
-            blueprint: { zh: "蓝图线稿", zh_tw: "藍圖線稿", en: "Blueprint", ja: "ブループリント" },
-            editorial: { zh: "编辑杂志", zh_tw: "編輯雜誌", en: "Editorial", ja: "エディトリアル" },
-            "sketch-notes": { zh: "手绘笔记", zh_tw: "手繪筆記", en: "Sketch notes", ja: "スケッチノート" },
-            "ink-notes": { zh: "墨线笔记", zh_tw: "墨線筆記", en: "Ink notes", ja: "インクノート" },
-            chalkboard: { zh: "粉笔黑板", zh_tw: "粉筆黑板", en: "Chalkboard", ja: "チョークボード" },
-            watercolor: { zh: "水彩", zh_tw: "水彩", en: "Watercolor", ja: "水彩" },
-            "warm-scene": { zh: "暖调场景", zh_tw: "暖調場景", en: "Warm scene", ja: "暖色シーン" },
-            "screen-print": { zh: "丝网印刷", zh_tw: "絲網印刷", en: "Screen print", ja: "スクリーンプリント" },
-            "fantasy-animation": { zh: "幻想动画", zh_tw: "幻想動畫", en: "Fantasy animation", ja: "ファンタジーアニメ" },
-            "pixel-art": { zh: "像素艺术", zh_tw: "像素藝術", en: "Pixel art", ja: "ピクセルアート" },
-            nature: { zh: "自然有机", zh_tw: "自然有機", en: "Nature", ja: "自然・オーガニック" },
-            "minimalist-swiss": { zh: "瑞士极简", zh_tw: "瑞士極簡", en: "Minimalist Swiss", ja: "スイスミニマル" },
-            glassmorphism: { zh: "玻璃拟态", zh_tw: "玻璃擬態", en: "Glassmorphism", ja: "グラスモーフィズム" },
-            "vintage-poster": { zh: "复古海报", zh_tw: "復古海報", en: "Vintage poster", ja: "ヴィンテージポスター" },
-            "paper-cut": { zh: "剪纸拼贴", zh_tw: "剪紙拼貼", en: "Paper cut", ja: "ペーパーカット" }
+            "vector-illustration": { zh: "矢量插画", zh_tw: "向量插畫", en: "Vector illustration", ja: "ベクターイラスト", ko: "벡터 설명" },
+            flat: { zh: "扁平插画", zh_tw: "扁平插畫", en: "Flat illustration", ja: "フラットイラスト", ko: "플랫 설명" },
+            "3d-isometric": { zh: "3D 等距", zh_tw: "3D 等距", en: "3D isometric", ja: "3Dアイソメトリック", ko: "3D 등각" },
+            "digital-dashboard": { zh: "数字仪表盘", zh_tw: "數位儀表板", en: "Digital dashboard", ja: "デジタルダッシュボード", ko: "디지털 대시보드" },
+            "corporate-photo": { zh: "企业摄影", zh_tw: "企業攝影", en: "Corporate photo", ja: "企業写真", ko: "회사 사진" },
+            blueprint: { zh: "蓝图线稿", zh_tw: "藍圖線稿", en: "Blueprint", ja: "ブループリント", ko: "블루프린트" },
+            editorial: { zh: "编辑杂志", zh_tw: "編輯雜誌", en: "Editorial", ja: "エディトリアル", ko: "사설" },
+            "sketch-notes": { zh: "手绘笔记", zh_tw: "手繪筆記", en: "Sketch notes", ja: "スケッチノート", ko: "스케치 노트" },
+            "ink-notes": { zh: "墨线笔记", zh_tw: "墨線筆記", en: "Ink notes", ja: "インクノート", ko: "잉크 노트" },
+            chalkboard: { zh: "粉笔黑板", zh_tw: "粉筆黑板", en: "Chalkboard", ja: "チョークボード", ko: "칠판" },
+            watercolor: { zh: "水彩", zh_tw: "水彩", en: "Watercolor", ja: "水彩", ko: "워터 컬러" },
+            "warm-scene": { zh: "暖调场景", zh_tw: "暖調場景", en: "Warm scene", ja: "暖色シーン", ko: "따뜻한 풍경" },
+            "screen-print": { zh: "丝网印刷", zh_tw: "絲網印刷", en: "Screen print", ja: "スクリーンプリント", ko: "스크린 프린트" },
+            "fantasy-animation": { zh: "幻想动画", zh_tw: "幻想動畫", en: "Fantasy animation", ja: "ファンタジーアニメ", ko: "판타지 애니메이션" },
+            "pixel-art": { zh: "像素艺术", zh_tw: "像素藝術", en: "Pixel art", ja: "ピクセルアート", ko: "픽셀 아트" },
+            nature: { zh: "自然有机", zh_tw: "自然有機", en: "Nature", ja: "自然・オーガニック", ko: "자연" },
+            "minimalist-swiss": { zh: "瑞士极简", zh_tw: "瑞士極簡", en: "Minimalist Swiss", ja: "スイスミニマル", ko: "" },
+            glassmorphism: { zh: "玻璃拟态", zh_tw: "玻璃擬態", en: "Glassmorphism", ja: "グラスモーフィズム", ko: "글래스모피즘" },
+            "vintage-poster": { zh: "复古海报", zh_tw: "復古海報", en: "Vintage poster", ja: "ヴィンテージポスター", ko: "빈티지 포스터" },
+            "paper-cut": { zh: "剪纸拼贴", zh_tw: "剪紙拼貼", en: "Paper cut", ja: "ペーパーカット", ko: "페이퍼 컷" }
         }
     };
 
@@ -860,13 +1044,13 @@
     }
 
     function applyStaticTranslations() {
-        document.documentElement.setAttribute("lang", LANG === "zh" ? "zh-CN" : (LANG === "zh-TW" ? "zh-TW" : (LANG === "ja" ? "ja" : "en")));
+        document.documentElement.setAttribute("lang", LANG === "zh" ? "zh-CN" : (LANG === "zh-TW" ? "zh-TW" : (LANG === "ja" ? "ja" : (LANG === "ko" ? "ko" : "en"))));
         document.querySelectorAll("[data-i18n]").forEach(function (node) {
             node.textContent = t(node.getAttribute("data-i18n"));
         });
     }
 
-    var LANG_NAMES = { zh: "中文", en: "English", ja: "日本語", "zh-TW": "繁體中文" };
+    var LANG_NAMES = { ko: "한국어", zh: "中文", en: "English", ja: "日本語", "zh-TW": "繁體中文" };
 
     function refreshLangToggle(toggleBtn) {
         // Custom dropdown (OS-independent): button shows the CURRENT language.
@@ -948,7 +1132,7 @@
     }
 
     function visualStylePreviewSrc(id) {
-        return "/static/style_previews/" + encodeURIComponent(id || "") + ".svg";
+        return "static/style_previews/" + encodeURIComponent(id || "") + ".svg";
     }
 
     function appendVisualStyleImage(parent, id) {
@@ -4198,7 +4382,7 @@
     function submitStage(payload, nextStage) {
         var btn = document.getElementById("btn-confirm");
         btn.disabled = true;
-        fetch("/api/confirm", {
+        fetch("api/confirm", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -4256,14 +4440,14 @@
     // and result.json, so a recovered server can tell the existing page exactly when
     // the next stage is ready.
     function pollForStage(nextStage) {
-        fetchJson("/api/session", "session")
+        fetchJson("api/session", "session")
             .then(function (session) {
                 var readyStage = Number(session && session.recommendation_stage_number || 0);
                 if (readyStage < nextStage) {
                     setTimeout(function () { pollForStage(nextStage); }, 1200);
                     return null;
                 }
-                return fetchJson("/api/recommendations", "recommendations").then(function (data) {
+                return fetchJson("api/recommendations", "recommendations").then(function (data) {
                     var serverStage = stageNumber(data);
                     if (data && typeof serverStage === "number" && serverStage >= nextStage) {
                         enterStage(data, serverStage);
@@ -4311,14 +4495,14 @@
         if (!designSystemValid(payload)) return;
         if (!customSelectionsValid(payload)) return;
         btn.disabled = true;
-        fetch("/api/confirm", {
+        fetch("api/confirm", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         }).then(function (r) {
             if (!r.ok) throw new Error("confirm failed");
             showConfirmedOverlay();
-            fetch("/api/shutdown", {
+            fetch("api/shutdown", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ reason: "confirmed" })
@@ -4358,17 +4542,17 @@
     }
 
     function loadCatalogs() {
-        return fetchJson("/api/catalogs", "catalogs")
-            .catch(function () { return fetchJson("/static/catalogs.json", "static catalogs"); });
+        return fetchJson("api/catalogs", "catalogs")
+            .catch(function () { return fetchJson("static/catalogs.json", "static catalogs"); });
     }
 
     function loadIconPreviews() {
-        return fetchJson("/api/icon-previews", "icon previews")
+        return fetchJson("api/icon-previews", "icon previews")
             .catch(function () { return {}; });
     }
 
     function loadAiImageComparison() {
-        return fetchJson("/api/ai-image-comparison", "AI image comparison")
+        return fetchJson("api/ai-image-comparison", "AI image comparison")
             .catch(function () { return {}; });
     }
 
@@ -4388,7 +4572,7 @@
     function loadStrategistUi(forceStage) {
         return Promise.all([
             loadCatalogs(),
-            fetchJson("/api/recommendations", "recommendations"),
+            fetchJson("api/recommendations", "recommendations"),
             loadIconPreviews(),
             loadAiImageComparison()
         ]).then(function (res) {
@@ -4498,7 +4682,7 @@
         // Session remains the first network read so completed runs can close
         // cleanly. Active runs always load the current Strategist stage; Stage 1
         // carries its template catalog inside the recommendation payload.
-        fetchJson("/api/session", "session").catch(function () {
+        fetchJson("api/session", "session").catch(function () {
             return { phase: "strategist" };
         }).then(function (session) {
             if (session && session.status === "done") {
