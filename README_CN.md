@@ -56,10 +56,8 @@
 </p>
 
 <p align="center">
-  <sub>下方的旁白 deck 与画廊示例均生成于 <strong>2026 年 5 月</strong>，模型为 Claude Opus 4.7 + <code>gpt-image-2</code>，每份都是一次性生成、未经精修。</sub>
+  <sub>下方的画廊示例均生成于 <strong>2026 年 5 月</strong>，模型为 Claude Opus 4.7 + <code>gpt-image-2</code>，每份都是一次性生成、未经精修。</sub>
 </p>
-
-<h3 align="center">下载这份<a href="https://raw.githubusercontent.com/hugohe3/ppt-master/main/examples/ppt169_attention_is_all_you_need/exports/attention_is_all_you_need_narrated.pptx">带音频旁白的 <em>Attention Is All You Need</em> 论文精读 deck</a>，在 PowerPoint 里直接放映，每一页都会自己"读"给你听 —— 这只是 PPT Master 能力的冰山一角。</h3>
 
 <table>
   <tr>
@@ -100,10 +98,6 @@
 
 <p align="center">
   <sub>下载任意一份 .pptx 在 PowerPoint 里打开，是感受真实产出水平最快的方式。<br/><a href="https://hugohe3.github.io/ppt-master/">在线翻看全部示例 →</a> · <a href="./examples/"><code>examples/</code> 目录</a> · <a href="./docs/zh/why-ppt-master.md">为什么选 PPT Master？</a></sub>
-</p>
-
-<p align="center">
-  更多端到端实例：<a href="https://space.bilibili.com/111258938/lists/8144072"><strong>合集·PPT-Master 能力展示</strong></a>（B 站）
 </p>
 
 ---
@@ -347,7 +341,7 @@ AI 全程处理——内容分析、视觉设计、SVG 生成、PPTX 导出。
 
 非用户自带图片有两条路径，可在同一份 deck 里按图混用：
 
-**A) AI 生图** — `image_gen.py`。设置 `IMAGE_BACKEND` 和对应 `*_API_KEY`（`OPENAI_API_KEY`、`GEMINI_API_KEY` 等），流程会自动调用。`python3 skills/ppt-master/scripts/image_gen.py --list-backends` 查看完整后端清单。`gpt-image-2` 目前综合质量最佳。
+**A) AI 生图** — Agent host 提供原生生图工具时可直接使用；也可通过 `image_gen.py` 配置 `IMAGE_BACKEND` 和供应商 `*_API_KEY`。host-native 生图不需要另配供应商生图 API Key，直接要求 Agent 使用自身生图工具即可。`python3 skills/ppt-master/scripts/image_gen.py --list-backends` 查看供应商后端清单。`gpt-image-2` 目前综合质量最佳。
 
 **B) 网络图片搜索** — `image_search.py`。**零配置**可用；建议配置 `PEXELS_API_KEY` / `PIXABAY_API_KEY`（都免费申请）以获得稳定的高质量结果：
 

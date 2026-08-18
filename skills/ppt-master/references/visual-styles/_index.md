@@ -2,6 +2,13 @@
 
 A **visual style** is how the deck **looks** — shape language, decoration density, whitespace rhythm, typographic character, texture / elevation. Resolve **one per deck**; Default locks it, while Quick keeps it only in active context. It anchors the aesthetic of the SVG layout itself (cards, dividers, spacing, corner radius, shadow use).
 
+**Hard rule — capability boundary**: A style governs treatment, visual weight,
+density, recurrence, and coherence. It never decides carrier eligibility or
+image source, and never narrows the complete primitive, Office-preset,
+independent-composition, Boolean, or necessary-freeform authoring vocabulary.
+Page purpose selects the carriers and construction; the style makes the chosen
+forms belong to one visual system.
+
 > **Styles carry NO fixed HEX and define no palette.** Default core color identity and recurring role behavior live in `design_spec.colors` / `spec_lock.colors` (confirmation `e`); Quick resolves equivalent palette anchors in active context. A visual style describes how those anchors behave in SVG composition and may call for contextual tints, gradients, effects, or material transitions; it does not substitute an unrelated palette. Generated images follow the same anchor model through [`image-renderings/`](../image-renderings/). [`image-palettes/`](../image-palettes/) is legacy compatibility material only.
 >
 > A visual style is *not* a mode. **Visual style = how it looks; mode = how you argue** (see [`modes/_index.md`](../modes/_index.md)). Resolve them independently — any style pairs with any mode.
@@ -14,13 +21,17 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 
 > The **`visual_style` value is only ever a first-column `id`** (`swiss-minimal`, `editorial`, …). The "Paired rendering" column lists **image-rendering** names (`flat`, `minimalist-swiss`, `digital-dashboard`, …) — never treat one of those as the `visual_style`. Default records rendering under confirmation h; Quick keeps the selected rendering only in active context and any required image manifest.
 >
-> The **`Illus.`** column is each style's spot-illustration propensity — `core` (illustration is intrinsic to the look), `supportive` (use where it lifts, restrained), or `sparse` (the style's lead visual competes; default off). It sets the **default lean** only, for when the user gives no steer: an explicit user request to use / skip illustrations overrides it either way, and `image_usage: none` always writes no illustration rows. Full per-style rule in each file's §6.
+> The **`Illus.`** column is each style's illustration propensity — `core` (illustration is intrinsic to the look), `supportive` (illustration can share the composition), or `sparse` (use selectively so the style's lead visual remains clear). It tunes centrality and recurrence, never eligible page types, element scale, or carrier combinations. An explicit user request to use / skip illustrations overrides it either way, and `image_usage: none` always writes no illustration rows. Full per-style rule in each file's §6.
+>
+> **Typography character applies to editable native text.** Decorative
+> lettering is a separate carrier decision; a selected style informs its
+> treatment, never its eligibility.
 
 ### 1.1 Corporate / product
 
 | Visual style | Character | Best for | Paired rendering | Illus. |
 |---|---|---|---|---|
-| [`swiss-minimal`](./swiss-minimal.md) | Grid-locked, sharp, aggressive whitespace, no decoration | High-end consulting, architecture, type-led | `minimalist-swiss` | sparse |
+| [`swiss-minimal`](./swiss-minimal.md) | Grid-locked, sharp, aggressive whitespace, near-zero ornament | High-end consulting, architecture, type-led | `minimalist-swiss` | sparse |
 | [`soft-rounded`](./soft-rounded.md) | Rounded cards, gentle elevation, approachable | Product, SaaS, training, consumer | `flat` | supportive |
 | [`glassmorphism`](./glassmorphism.md) | Translucent glass panels, gradient light, floating depth | Modern SaaS, fintech, product launches, AI demos | `glassmorphism` | sparse |
 | [`dark-tech`](./dark-tech.md) | Dark canvas, glow accents, geometric precision | Tech, AI, data products, launches | `digital-dashboard` | sparse |
@@ -31,7 +42,7 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 | Visual style | Character | Best for | Paired rendering | Illus. |
 |---|---|---|---|---|
 | [`editorial`](./editorial.md) | Magazine hierarchy, rules & columns, serif/sans interplay | Finance, journalism, analysis, explainers | `editorial` | supportive |
-| [`photo-editorial`](./photo-editorial.md) | Full-bleed photography dominates, text points & captions | Architecture, design, fashion, culture, photo-led | `corporate-photo` | sparse |
+| [`photo-editorial`](./photo-editorial.md) | Full-bleed photography dominates, text points & captions | Architecture, design, fashion, culture, travel / destination, photo-led | `corporate-photo` | sparse |
 | [`data-journalism`](./data-journalism.md) | Multi-column micro-charts, sidebars, source lines, dense | Finance, market reviews, research, data reports | `editorial` | sparse |
 | [`brutalist`](./brutalist.md) | Newsprint density, ruled boxes, raw structure, flat | Annual reviews, research digests, manifestos | `screen-print` / `editorial` | supportive |
 
@@ -41,7 +52,7 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 |---|---|---|---|---|
 | [`memphis`](./memphis.md) | Clashing color blocks, geometric confetti, bold outlines | Festivals, consumer, youth, launch hype | `flat` | core |
 | [`zine`](./zine.md) | Riso misregistration, halftone, limited palette, print grit | Culture, design talks, indie brands | `screen-print` | core |
-| [`vintage-poster`](./vintage-poster.md) | Mid-century flat blocks, halftone, retro-geometric warmth | Heritage, hospitality, cultural, anniversaries | `vintage-poster` | core |
+| [`vintage-poster`](./vintage-poster.md) | Mid-century flat blocks, halftone, retro-geometric warmth | Heritage brands, historic hospitality identities, cultural retrospectives, anniversaries | `vintage-poster` | core |
 | [`paper-cut`](./paper-cut.md) | Layered cut-paper sheets, soft inter-layer shadow, tactile | Cultural / folk, children, festival, sustainability | `paper-cut` | core |
 
 ### 1.4 Hand-drawn / brush
@@ -61,13 +72,16 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 
 ---
 
-## 2. Auto-selection — content vibe / industry → style
+## 2. Selection recall — communication task + content signal → style
+
+**Reference — not a constraint**: Resolve the audience task, outcome, delivery context, required carriers, and artifact afterlife before using this table. A topic or industry word alone never selects a style. Reject a candidate that weakens the audience's practical task or cannot integrate required real-world imagery. A travel itinerary or destination decision aid is not retro merely because its subject is cultural or hospitality-related; choose retro only when nostalgia / heritage storytelling or an explicit user direction makes it part of the communication job.
 
 | Signal | Recommended style | Alternates |
 |---|---|---|
 | High-end consulting / architecture / luxury / minimal | `swiss-minimal` | `editorial` |
 | Finance / journalism / research / long-form analysis | `editorial` | `data-journalism` |
 | Photography-led / architecture / design / fashion / 大图 | `photo-editorial` | `editorial` |
+| Itinerary / destination guide / trip planning / 旅游计划 / 行程 | `photo-editorial` | `editorial`, `soft-rounded` |
 | Data report / market review / 财经 / Bloomberg / Economist | `data-journalism` | `editorial` |
 | Product / SaaS / training / consumer / friendly | `soft-rounded` | `editorial` |
 | Modern SaaS / fintech / health-tech / premium app | `glassmorphism` | `dark-tech` |
@@ -77,7 +91,7 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 | Annual review / manifesto / max-density editorial | `brutalist` | `editorial` |
 | Festival / consumer brand / youth / loud launch | `memphis` | `soft-rounded` |
 | Indie publishing / design / culture / printed feel | `zine` | `editorial` |
-| Heritage / hospitality / retro brand / 老字号 / 周年 | `vintage-poster` | `zine` |
+| Heritage brand / historic hospitality identity / retro brand / 老字号 / 周年 | `vintage-poster` | `zine` |
 | Cultural / folk / festival / children / sustainability | `paper-cut` | `sketch-notes` |
 | Education / training / onboarding / 教学 | `sketch-notes` | `paper-cut` |
 | Methodology / before-after / manifesto / 方法论 | `ink-notes` | `editorial` |
@@ -107,4 +121,7 @@ Quick does not display a candidate spectrum. It reads this index, resolves one p
 | Default Generate | Strategist reads only this index while mapping three whole solution intents, freezes each custom direction's exact bases, then reads only their deduplicated detail files. Executor reads the confirmed preset file or exact custom references. |
 | Quick Generate | The current main agent reads only this index while deciding, then reads the resolved preset or exact custom bases and retains that one direction without Design Spec/lock. |
 
-**Resolution scope**: deck-wide (one style per deck). It anchors taste as a **reference**, not a whitelist — pages may deviate with reason.
+**Resolution scope**: deck-wide (one style per deck). It anchors taste as a
+**reference**, not a whitelist. Each §1 `Composition geometry` list is
+generative vocabulary, not a finite layout menu; pages may synthesize or
+deviate when their communication job calls for it.

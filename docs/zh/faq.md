@@ -10,7 +10,7 @@
 
 ## Q: 只有一个主题或想法、没有任何资料，也能生成吗？
 
-可以。直接告诉 AI 你想做的主题或场景（如"做一个关于宫崎骏的 PPT"、"介绍我们公司新产品"），Generate PPTX 路线会运行 **topic-research 阶段**，补齐规划所需的事实基础与来源记录。已有部分材料时，只补实现用户目标仍缺少的事实；如果用户要求只使用原材料，则不做外部补充。图片由 Strategist 在规划中选定，并且只在最终确认后获取。
+可以。直接告诉 AI 你想做的主题或场景（如"做一个关于宫崎骏的 PPT"、"介绍我们公司新产品"），Generate PPTX 路线会运行 **topic-research 阶段**，补齐规划所需的事实基础与来源记录。已有部分材料时，只补实现用户目标仍缺少的事实；如果用户要求只使用原材料，则不做外部补充。项目导入不会根据来源记录中的网页 URL 批量抓取材料；常规搜图失败后，才会按需获取一个相关网页及其图片资源包，审阅后只把选中的图片加入项目图池。
 
 效果取决于公开网页的覆盖度。如果你已有专业资料（论文、内部文档），直接把文件给 AI 比联网检索更准。
 
@@ -67,11 +67,11 @@ python3 skills/ppt-master/scripts/update_repo.py
 
 ## Q: 能用 AI 生成配图吗？
 
-可以。PPT Master 内置了图片生成脚本，支持多个供应商（Gemini、OpenAI、FLUX、通义千问、智谱等）。在策略师阶段选择"AI 生图"方案后，流程会根据内容自动生成配图。你也可以使用自己的图片——只需放到项目的 `images/` 目录下即可。
+可以。Agent host 提供原生生图工具时，PPT Master 可直接使用，不需要另配供应商生图 API Key；也可以通过内置 `image_gen.py` 使用已配置的供应商后端。图片方案选择"AI 生图"即可，也可明确要求 Agent 使用自身生图工具。你还可以把自己的图片放到项目的 `images/` 目录下。
 
 ## Q: 没有生图 API Key，还能配图吗？
 
-可以——在策略师的"图片方案"步骤选择"网络图片"。PPT Master 内置了零配置的 `image_search.py`，在 Openverse 和 Wikimedia Commons 中搜索可商用的开放许可图片（无需 API Key）。零配置搜索适合作为兜底：能直接用，但图片质量不稳定，容易出现普通用户上传、构图随意、清晰度一般的素材。
+可以。Agent host 提供原生生图能力时，选择"AI 生图"并要求它使用自身生图工具，不需要供应商生图 API Key。否则可在策略师的"图片方案"步骤选择"网络图片"；PPT Master 内置零配置的 `image_search.py`，在 Openverse 和 Wikimedia Commons 中搜索可商用的开放许可图片。零配置搜索适合作为兜底：能直接用，但图片质量不稳定，容易出现普通用户上传、构图随意、清晰度一般的素材。
 
 如果想要更现代的商业风照片，建议在 `.env` 里设置 `PEXELS_API_KEY` 和/或 `PIXABAY_API_KEY`（都是免费申请）。搜索会自动纳入 Pexels / Pixabay，人物、办公、生活方式、产品和插画类图片质量通常会明显更稳定。两种路径可以在同一份 deck 里混用（比如 hero 图用 AI 生成、团队照片用网络搜索）；如果选中的图片需要署名，Executor 会在该幻灯片自动添加就地小字署名。
 
@@ -160,8 +160,11 @@ marker 都携带普通可见预览；原生导出会替换该预览，不增加�
 前向编译覆盖 Microsoft 文档中 Microsoft 365 2606 / Mac 16.110 LaTeX
 档位与 2605 / 16.109 mhchem 档位明确点名的全部输入，包括符号、结构、环境、
 宏、化学式、公式局部颜色及文档规定的原生归一化。未知或明确不支持的输入直接
-失败，不会以原始 LaTeX 混进页面。PPT Master 不实现 OMML 到 LaTeX 的反向
-build-down。
+失败，不会以原始 LaTeX 混进页面。PPTX 导入则复用同一封闭 OMML 校验器提供
+窄反向路径：PPT Master 自有的块级与行内数学内容会恢复为带可见 SVG 预览的
+规范公式 marker。这里恢复的是归一化语义，不是作者原始 LaTeX 写法，也不是任意
+第三方 OMML 转换；未知 OMML 在 tolerant 模式下会被报告，并以可读 / 不透明
+fallback 保留。
 
 生成的 OMML 仍以 PowerPoint 2010+ 包为目标，可执行输入档位锁定到上述
 Microsoft 文档版本。仓库验证覆盖编译器行为、OMML 结构与 PPTX 打包，不等同于
@@ -186,6 +189,8 @@ carrier 与保留边界见 [PowerPoint ↔ SVG 映射指南](./powerpoint-svg-ma
 一页时整页一次性呈现，不会自动逐个级联。两者都通过 `svg_to_pptx.py` 的
 参数控制：`-t/--transition` 控制页级，`-a/--animation` 控制元素级。对象
 注册表已经包含进入、强调、动作路径和退出效果。
+`pptx_to_svg.py` 也会把当前注册表内可精确读回的页面切换和具有精确时长的
+有限对象动画记录重建到 `animations.json`；不支持的来源 timing 会保留明确诊断。
 
 ```bash
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -t push       # 换转场效果

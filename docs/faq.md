@@ -10,7 +10,7 @@ Almost anything: **PDF**, **DOCX**, **PPTX**, **EPUB**, **HTML**, **LaTeX**, **R
 
 ## Q: Can I generate a deck with just a topic, no source materials?
 
-Yes. Tell the AI your topic or scenario (e.g. "make a PPT about Hayao Miyazaki", "introduce our new product"). The Generate PPTX route will run its **topic-research stage** to gather the factual baseline and provenance needed for planning. If you provide partial material, the same stage may fill only the factual gaps required by your requested outcome unless you ask for a source-only result. Images are selected during Strategist planning and acquired only after final confirmation.
+Yes. Tell the AI your topic or scenario (e.g. "make a PPT about Hayao Miyazaki", "introduce our new product"). The Generate PPTX route will run its **topic-research stage** to gather the factual baseline and provenance needed for planning. If you provide partial material, the same stage may fill only the factual gaps required by your requested outcome unless you ask for a source-only result. Project import does not bulk-fetch the adopted webpage URLs recorded in provenance. After normal image search fails, one relevant page may be fetched with its companion images for review, and only selected files enter the deck's image pool.
 
 Quality depends on what's on the open web. If you already have specialized material (papers, internal docs), giving those files to the AI directly produces better results than web research alone.
 
@@ -65,11 +65,11 @@ Neither path carries a `.git` directory, so `git describe` cannot report the ver
 
 ## Q: Can I use AI-generated images in my presentation?
 
-Yes. PPT Master includes a built-in image generation script that supports multiple providers (Gemini, OpenAI, FLUX, Qwen, Zhipu, etc.). During the Strategist phase, if you choose "AI generation" for the image approach, the pipeline will automatically generate images based on your content. You can also provide your own images — just place them in the project's `images/` folder.
+Yes. When the agent host exposes a native image tool, PPT Master can use it without a separate provider image-generation API key. It can also use the built-in `image_gen.py` through a configured provider. Choose "AI generation" for the image approach; you can explicitly ask the agent to use its own image tool. You can also place your own images in the project's `images/` folder.
 
 ## Q: I don't have an image-generation API key — can I still get images?
 
-Yes — pick "Web-sourced" in the Strategist's Image Usage step. PPT Master ships a zero-config `image_search.py` that searches openly-licensed images across Openverse and Wikimedia Commons (no API key needed). Zero-config search is a fallback: it works immediately, but quality can be uneven because many results are ordinary user uploads.
+Yes. If the agent host exposes native image generation, choose "AI generation" and ask it to use its own image tool; this needs no provider image API key. Otherwise, pick "Web-sourced" in the Strategist's Image Usage step. PPT Master ships a zero-config `image_search.py` that searches openly-licensed images across Openverse and Wikimedia Commons. Zero-config search is a fallback: it works immediately, but quality can be uneven because many results are ordinary user uploads.
 
 For better contemporary stock photography, set `PEXELS_API_KEY` and/or `PIXABAY_API_KEY` in `.env` (both are free). The search will include Pexels / Pixabay automatically, which usually improves people, workplace, lifestyle, product, and illustration images. You can mix paths in one deck (e.g. AI for hero illustrations, web for team photos). If a selected image requires attribution, Executor adds a small inline credit on the affected slide.
 
@@ -162,7 +162,11 @@ documented Microsoft 365 2606 / Mac 16.110 LaTeX profile and 2605 / 16.109
 mhchem profile: symbols, structures, environments, macros, chemistry, local
 formula colors, and the documented native normalizations. Unknown and
 explicitly unsupported input fails closed instead of appearing as raw LaTeX.
-PPT Master does not implement reverse OMML-to-LaTeX build-down.
+For PPTX import, the same closed OMML validator supports a narrow reverse path:
+PPT Master-owned block and inline math becomes canonical formula markers with
+visible SVG previews. This recovers normalized semantics, not the author's
+original LaTeX spelling and not arbitrary third-party OMML. Unknown OMML is
+reported and retained as readable/opaque fallback in tolerant mode.
 
 The generated OMML retains the PowerPoint 2010+ package target, and the
 executable source profile is pinned to the Microsoft documentation versions
@@ -193,6 +197,9 @@ animation is **off by default**—a page appears as a whole instead of having
 elements auto-cascade in one by one. Both are controlled by `svg_to_pptx.py`
 flags: `-t/--transition` for page-level and `-a/--animation` for element-level.
 The object registry includes entrance, emphasis, motion-path, and exit effects.
+`pptx_to_svg.py` also reconstructs exact current-registry page transitions and
+finite exact-duration object-animation rows into `animations.json`;
+unsupported source timing remains an explicit diagnostic.
 
 ```bash
 python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -t push       # different transition

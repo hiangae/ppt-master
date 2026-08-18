@@ -102,10 +102,43 @@ Constraint strength and decision ownership are independent. Preserve this chain 
 | Layer | Owns |
 |---|---|
 | User / initial materials | Supplied facts/assets, desired outcome, exclusions, and permission boundaries remain authoritative |
-| Strategist / plan + preparation | Assess material sufficiency; trigger permitted fact research; decide the approved content, resources, keys, identity anchors, and exact page roster; record optional capability/expression recommendations; materialize the planned project-local inventory or record an explicit `Needs-Manual` dependency before execution. For icons, prepare a curated project pool with broad semantic fit rather than assigning files to pages |
-| Executor / realization | Use only prepared project-local assets; preserve approved content, resources, and identity anchors; realize them through geometry, composition, hierarchy, and treatment. Fields explicitly labeled `suggestion` or Reference are preferred expression rather than binding selections: Executor may adapt or decline them when content and explicit constraints remain intact. For icons, the complete `<project>/icons/` pool is prepared material; `icons.inventory` is a curated bundled-pool index, not a page-use plan or whitelist, and Executor chooses prepared icons per page without a coverage quota. Sparse local font/color garnish is allowed only while non-structural and non-recurring |
+| Strategist / plan + preparation | Assess material sufficiency; trigger permitted topic research and retain its research/provenance pair without expanding adopted webpage URLs; decide the approved content, resources, keys, identity anchors, and exact page roster. During that roster composition, resolve each page's semantic carrier mix—background, text/lettering, native-geometry/relationship jobs, imagery/symbols, and data carriers—in one pass before deriving external-resource rows. Recommend high-level composition, visual focus, and continuity as Reference when useful, without selecting a local authoring capability or element geometry; materialize the planned project-local inventory or record an explicit `Needs-Manual` dependency before execution. For icons, prepare a curated project pool with broad semantic fit rather than assigning files to pages |
+| Executor / realization | Use only prepared project-local assets; preserve approved content, resources, and identity anchors; realize each page by resolving the actual carrier combination, geometry, composition, hierarchy, and treatment together before coordinates. Discover and invoke local deterministic authoring capabilities without an upstream capability selection. Consider each field explicitly labeled `suggestion` or Reference, then adopt, adapt, or decline it while preserving its semantic job and every binding constraint. For icons, the complete `<project>/icons/` pool is prepared material; `icons.inventory` is a curated bundled-pool index, not a page-use plan or whitelist, and Executor chooses prepared icons per page without a coverage quota. Sparse local font/color garnish is allowed only while non-structural and non-recurring |
 
-**Preparation timing**: In the default pipeline, fact research required for planning may run before final confirmation. AI / web / slice acquisition runs only from the completed `design_spec.md §VIII` and `spec_lock.md`, after final confirmation and before Executor. Image_Generator, Image_Searcher, and icon-sync tooling execute Strategist-owned preparation; they are not independent decision owners.
+**Hard rule — capability knowledge precedes selection**: physical file
+boundaries do not imply runtime lazy-loading. A role loads the complete decision
+authorities for every capability it owns before choosing among those
+capabilities; otherwise the load trigger circularly depends on a choice made
+without that capability. Default Strategist's fixed planning bundle covers
+resource/preparation and high-level expression options without local authoring
+parameters. Executor's fixed construction bundle covers locally callable
+authoring options. Quick loads both decision surfaces in its one context. Only
+post-selection mechanics whose trigger is independently observable may remain
+conditional. For example, an actual `ai` / `slice` resource row may trigger
+Image_Generator backend, prompt-assembly, and per-image type details after
+planning; those mechanics are not a missing Strategist capability.
+
+**Hard rule — native shapes are authoring capabilities, not prepared
+resources**: a prepared resource needs a stable project-local file/path before
+realization because page authoring cannot acquire or generate it in place.
+Office presets, SVG primitives, Connectors, Boolean helpers, and necessary
+freeform geometry are locally callable construction capabilities. Strategist
+never inventories them or promotes a concrete preset, primitive, Connector,
+Boolean/freeform operation, or authoring parameter into a binding planning
+selection. A macro Reference may mention a technique as optional inspiration
+without prescribing or gating construction. The Design Spec / lock create no
+native-shape field; Executor discovers the complete current preset registry and
+chooses the page-fit construction during realization.
+
+**Preparation timing**: In the default pipeline, topic research and import of
+its two-artifact research pair may run before final confirmation. Facts JSON
+URLs are not auto-expanded. AI / web / slice acquisition runs only from the
+completed `design_spec.md §VIII` and `spec_lock.md`, after final confirmation
+and before Executor. Only after normal image search fails may one relevant
+adopted page become a Markdown + companion-image source package; review it and
+promote accepted files individually, never the whole package. Image_Generator,
+Image_Searcher, and icon-sync tooling execute Strategist-owned preparation;
+they are not independent decision owners.
 
 **Post-motion sound exception**: optional transition/object sound is not a
 page-authoring ingredient and never enters Strategist planning,
@@ -115,7 +148,7 @@ sound ids and sync only a concretely selected cue into the project. With no
 selected cue, it creates no `<project>/sounds/` directory. This exception does
 not permit Executor to acquire visual resources.
 
-**Hard rule — default pipeline**: downstream freedom exists only in dimensions left open upstream, including fields explicitly labeled `suggestion` or Reference. A named binding outcome retains identity; a broad semantic request or expression recommendation permits in-class choice. Once the plan resolves a binding choice, execution cannot reopen or substitute it. For icons, library/stroke and the prepared-project boundary bind, while per-page choice within the prepared pool is realization. Executor never searches, generates, downloads, syncs, invents, or replaces a resource; missing material returns to Strategist-owned preparation or upstream repair.
+**Hard rule — default pipeline**: downstream freedom exists only in dimensions left open upstream, including fields explicitly labeled `suggestion` or Reference. A named binding outcome retains identity; a broad semantic request or expression recommendation permits in-class choice. Executor may adopt, adapt, or decline a Reference without upstream repair unless an explicit user/template/resource constraint promotes the named property. Once the plan resolves a binding choice, execution cannot reopen or substitute it. For icons, library/stroke and the prepared-project boundary bind, while per-page choice within the prepared pool is realization. Executor never searches, generates, downloads, syncs, invents, or replaces a resource; missing material returns to Strategist-owned preparation or upstream repair.
 
 **Explicit Quick Generate exception**: [`quick-generate`](../../skills/ppt-master/workflows/profiles/quick-generate.md) removes the separate Strategist/confirmation handoff. The current main agent therefore owns both its active-context decisions and the preparation of project-local sources, images, icons, and provenance before it begins SVG realization; native formulas are authored directly from exact mathematical content rather than acquired as resources. This exception does not move acquisition into a default-pipeline Executor and does not permit resource reselection while a page is being realized. Explicit user facts, choices, exclusions, and permissions remain upstream authority; unspecified routine choices are resolved automatically without a confirmation stop.
 
