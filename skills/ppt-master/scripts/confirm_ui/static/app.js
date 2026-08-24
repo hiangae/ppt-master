@@ -743,13 +743,196 @@
             on: "開",
             option_prefix: "方案",
             error_retry: "出錯，請重試"
-        }
+        },
+    ko: {
+        page_title: "PPT Master - 디자인 확정",
+        topbar_hint: "미결 항목에 답변하거나 추천 사항을 선택 및 맞춤설정한 후 계속 진행하세요.",
+        stage_anchors: "1단계 · 커뮤니케이션 협약",
+        stage_final_plan: "2단계 · 최종 계획 및 제작",
+        loading: "불러오는 중…",
+        load_error: "현재 추천 단계를 불러올 수 없습니다. 실행 전에 AI가 작성해야 합니다.",
+        btn_confirm: "확정",
+        btn_confirm_contract: "협약 확정 및 계속 →",
+        btn_confirm_final_plan: "최종 계획 확정 →",
+        deriving: "선택 사항을 바탕으로 하위 옵션을 생성하는 중…",
+        template_selection_required: "자유 디자인을 선택하거나 템플릿을 사용하세요. 템플릿 사용 시 최소 하나의 워크스페이스를 선택해야 합니다.",
+        connection_lost: "확정 서버와의 연결이 끊어져 재시도 중입니다. 오류가 계속되면 채팅으로 돌아가 확정해 주세요.",
+        confirmed_title: "✓ 확정됨",
+        confirmed_hint: "선택 사항이 저장되었습니다. 이 페이지를 닫고 채팅으로 돌아가셔도 됩니다.",
+        lang_toggle_title: "언어 변경",
+        sec_template_choice: "디자인 기준",
+        template_choice_hint: "이 프레젠테이션의 디자인 시스템 구축 방식을 선택하세요.",
+        template_free_title: "현재 콘텐츠 기반 디자인",
+        template_free_desc: "재사용 가능한 템플릿 워크스페이스를 사용하지 않습니다. 전략가가 이 프로젝트로부터 시각 시스템을 직접 도출합니다.",
+        template_use_title: "템플릿 사용",
+        template_use_desc: "재사용 가능한 브랜드, 스타일, 레이아웃, 프레젠테이션 또는 지정된 워크스페이스를 하나 이상 선택하세요.",
+        sec_template_library: "템플릿 조합",
+        template_library_hint: "각 유형별로 등록된 템플릿을 최대 하나씩 선택하세요. 브랜드, 스타일, 레이아웃, 프레젠테이션을 조합할 수 있습니다.",
+        sec_template_explicit: "지정된 템플릿",
+        template_explicit_hint: "이번 실행에 제공된 정확한 워크스페이스를 최대 하나 선택하세요. 검증을 위해 소스 경로가 표시됩니다.",
+        template_kind_brand: "브랜드",
+        template_kind_style: "스타일",
+        template_kind_layout: "레이아웃",
+        template_kind_deck: "프레젠테이션",
+        template_source_library: "라이브러리",
+        template_source_explicit: "지정된 경로",
+        template_source_path: "소스 경로",
+        template_select_none: "선택 안 함",
+        template_none_registered: "등록된 템플릿 없음",
+        template_none_explicit: "이번 실행에 지정된 템플릿 없음",
+        sec_canvas: "캔버스 서식",
+        sec_pages: "페이지 수",
+        sec_audience: "대상 청중",
+        sec_communication: "프레젠테이션 달성 목표",
+        sec_delivery: "사용 방식 및 유지 필요 요소",
+        sec_narrative: "내러티브 방향",
+        sec_visual: "시각적 방향",
+        sec_color: "색상 구성",
+        sec_icons: "아이콘 활용",
+        sec_type: "타이포그래피",
+        sec_images: "이미지 활용",
+        sec_image_production: "이미지 제작",
+        sec_proactive_execution: "사전 작업 실행",
+        sec_mode: "생성 모드",
+        sec_refine: "디자인 사양(Design Spec) 먼저 검토",
+        sec_design_directions: "일관된 디자인 방향",
+        design_directions_hint: "추천하는 종합 방향이 먼저 적용됩니다. 다른 방향을 선택하거나 아래 세부 항목을 미세 조정하세요. '복원'을 누르면 조정된 방향이 원래 세트로 돌아갑니다.",
+        direction_active: "적용됨",
+        direction_adjusted: "조정됨",
+        direction_apply_hint: "이 종합 방향을 적용하려면 클릭하세요.",
+        direction_restore: "원래 작성된 방향으로 복원",
+        scheme_component_options: "프로젝트 맞춤 선택 항목 · 수정할 카드를 선택하세요",
+        sec_template_application: "템플릿 적용 방식",
+        template_application_hint: "AI가 설치된 템플릿을 이 프레젠테이션에 적용하는 방법을 추천합니다. 자연어로 계획을 직접 수정하세요.",
+        placeholder_template_application: "사용, 제외, 반복, 순서 변경할 템플릿 페이지/시안과 반드시 유지할 요소, 대체 또는 재구성 가능한 요소를 설명하세요.",
+        sub_mode: "내러티브 모드",
+        sub_visual: "시각적 스타일",
+        sub_divergence: "자료 재구성 정도 (원본 대비 변형의 자유도)",
+        placeholder_divergence: "자유롭게 작성하세요 (예: \"문서 내용을 엄격히 준수\" / \"원본 범위 내에서 자유로운 재구성 및 확장\"). 비워두면 균형 잡힌 기본값이 적용됩니다.",
+        communication_intent: "이 프레젠테이션이 달성해야 하는 목표는 무엇인가요?",
+        communication_intent_hint: "주관식 답변 — 해당되는 항목을 조합하세요: 정보 전달, 설명, 설득, 의사결정, 싱크/얼라인, 교육, 보고/회계, 동기부여/행동 유도, 기록/인수인계. 필요한 경우 우선순위나 순서를 설명하세요 (라벨을 선택하지 마세요).",
+        placeholder_communication_intent: "예: 진행 상황 보고 및 리스크 우선 공유 후, 차기 투자 건에 대한 의사결정 확보.",
+        audience_outcome: "청중에게 바라는 결과 / 성공 조건",
+        placeholder_audience_outcome: "발표 후 청중이 무엇을 알고, 이해하고, 믿고, 결정하거나 실행해야 하나요?",
+        core_message: "핵심 메시지 / 요청할 의사결정 / 실행 사항",
+        placeholder_core_message: "다른 것을 모두 잊더라도 반드시 전달되어야 하는 주장, 요청 또는 실행 사항은 무엇인가요?",
+        delivery_context: "전달 환경 (주요 환경 명시)",
+        delivery_context_hint: "발표자 중심, 읽기 중심, 하이브리드, 녹화/자동 재생 등으로 구분합니다. 하이브리드인 경우 어떤 방식이 주가 되고 부차적인 용도로 무엇이 유지되어야 하는지 명시하세요.",
+        placeholder_delivery_context: "예: 주요: 발표자가 진행하는 20분 경영진 검토. 부차적: 검토 후 공유되는 읽기용 승인 본.",
+        artifact_afterlife: "산출물 활용 계획 (Afterlife)",
+        placeholder_artifact_afterlife: "예: 승인, 검토, 감사, 보관, 인수인계, 재활용 등. 추후 활용 계획이 없으면 비워두세요.",
+        stage1_current_value_hint: "수정 가능한 필드에는 추천 사항이 포함되어 있습니다. 유지, 수정, 삭제할 수 있으며 확정 시 빈값을 포함해 현재 텍스트가 그대로 저장됩니다.",
+        content_divergence_locked_hint: "이 프로필은 원본 문구와 페이지 구조를 보존하므로 이 필드는 고정되어 있습니다.",
+        custom: "사용자 지정",
+        custom_placeholder: "직접 입력하세요…",
+        ai_custom_candidate: "AI 맞춤 제안",
+        ai_custom_candidate_hint: "비교를 위해 항상 표시됩니다. 기본 선택되어 있지 않으며, 선택 후 수정할 수 있습니다.",
+        custom_behavior_required: "선택한 AI 맞춤 제안은 비워둘 수 없습니다.",
+        custom_color_required: "계속 진행하기 전에 사용자 지정 색상 구성을 설명해주세요.",
+        design_system_required: "계속 진행하기 전에 전체 팔레트와 타이포그래피 시스템을 선택하세요.",
+        mode_behavior_placeholder: "막(Act) 순서, 제목 톤앤매너, 페이지 리듬, 발표 태도를 설명하세요.",
+        visual_style_behavior_placeholder: "조형적 언어, 구도, 장식 밀도, 여백, 타이포그래피 특징, 질감을 설명하세요.",
+        recommended: "추천",
+        placeholder_audience: "이 프레젠테이션의 대상은 누구인가요?",
+        placeholder_pages: "예: 12-15",
+        hex_override: "사용자 지정 HEX 직접 입력:",
+        image_ai_path: "AI 이미지 소스",
+        image_strategy: "생성 이미지 스타일",
+        image_strategy_empty: "사용 가능한 프리셋 스타일 레퍼런스가 없습니다. 사용자 지정 스타일을 사용할 수 있습니다.",
+        image_strategy_required: "생성 이미지 프리셋을 선택하거나 사용자 지정 스타일을 설명하세요.",
+        image_strategy_invalid: "선택한 생성 이미지 프리셋을 사용할 수 없습니다.",
+        image_strategy_select_placeholder: "생성 이미지 프리셋 선택…",
+        image_strategy_recommended_group: "이 프레젠테이션 추천 스타일",
+        image_strategy_all_group: "전체 프리셋 스타일",
+        image_strategy_rendering: "렌더링",
+        image_strategy_visual: "시각 요소",
+        image_strategy_mood: "분위기",
+        image_strategy_ai_custom: "AI 맞춤 제안",
+        image_strategy_ai_custom_desc: "새로운 제안 또는 다중 레퍼런스 렌더링 제안입니다. 선택 후 수정하세요.",
+        image_strategy_custom_placeholder: "생성할 이미지의 정확한 방향, 주제, 구도, 스타일 힌트 또는 피해야 할 사항을 설명하세요.",
+        image_strategy_reference_hint: "레퍼런스 이미지는 렌더링 방식만 보여줍니다. 최종 AI 이미지는 위에서 선택한 프레젠테이션 색상 구성을 따릅니다.",
+        image_strategy_no_reference: "이 사용자 지정 항목에 대한 레퍼런스 이미지가 없습니다.",
+        image_source_summary: "선택된 이미지 소스",
+        image_production_hint: "이미지 소스 및 렌더링은 위에서 선택되었습니다. 여기서는 제작 경로만 확정하세요.",
+        image_usage_notes: "추가 이미지 요구사항",
+        image_usage_notes_placeholder: "예: 손 씻는 실사 장면, 만화 같은 세균 표현 지양, 제품 사진은 수정 없이 원본 유지.",
+        image_usage_required: "최소 하나 이상의 이미지 활용 옵션을 선택하세요.",
+        image_usage_none_exclusive: "'이미지 사용 안 함'은 다른 이미지 옵션과 함께 선택할 수 없습니다.",
+        proactive_execution_hint: "별도의 직접적인 지시가 없을 때만 이 기본값이 적용됩니다. 사용자의 최근 명시적 지시가 항상 최우선 적용됩니다.",
+        proactive_speaker_notes: "발표자 노트 사전 생성",
+        proactive_speaker_notes_desc: "기본적으로 활성화되어 있습니다. 에이전트가 별도 요청 없이 발표자 노트를 생성합니다.",
+        proactive_custom_animations: "맞춤 애니메이션 사전 생성",
+        proactive_custom_animations_desc: "기본적으로 비활성화되어 있습니다. 전략가의 모션 제안은 계속 제공되며, 별도 요청 없이 맞춤 애니메이션을 생성하려면 이 옵션을 켜세요.",
+        proactive_narration_audio: "내레이션 오디오 사전 생성",
+        proactive_narration_audio_desc: "기본적으로 비활성화되어 있습니다. 이 옵션이 발표자 노트 토글 상태를 직접 변경하지는 않으며, 전략가가 디자인 사양(Design Spec)에서 내레이션에 필요한 실제 노트 의존성을 처리합니다.",
+        font_heading: "제목",
+        font_body: "본문",
+        font_selection: "글꼴 선택",
+        primary_language_font: "기본 언어 글꼴",
+        english_font: "영문 글꼴",
+        font_picker_hint: "추천 항목을 선택하면 이 선택 항목들이 채워집니다. 글꼴을 하나라도 변경하면 타이포그래피가 '맞춤 설정됨'으로 표시됩니다.",
+        other_installed_font: "기타 설치된 글꼴…",
+        other_font_placeholder: "설치된 정확한 글꼴 이름",
+        customized: "맞춤 설정됨",
+        font_body_size: "본문 기준 크기",
+        font_body_size_hint: "모든 글자 크기는 이 본문 기준 크기에서 도출됩니다.",
+        body_size_unit_relation: "SVG px에서 PPT pt 변환: 1px = 0.75pt.",
+        body_size_pt_hint: "약 {pt} pt (1px = 0.75pt, px 단위로 저장됨).",
+        role_size_pt_hint: "≈ {pt} pt",
+        body_size_hint_canvas: "이 캔버스는 ~{lo}–{hi}px 범위를 권장합니다 (유효 캔버스 영역 기준).",
+        body_size_hint_purpose: "이 읽기 모드는 {def}px를 권장합니다 (범위가 아닌 단일 고정 크기).",
+        body_size_hint_oor: "(현재 값이 이 캔버스의 일반적인 범위를 벗어났습니다. 단율이 올바른지, 크기가 잘 맞는지 확인하세요.)",
+        delivery_purpose: "읽기 모드",
+        delivery_purpose_hint: "의미 전달의 주체를 선택하세요. 읽기 중심 프레젠테이션은 완성된 문장과 세부 정보로 스스로를 설명하며, 발표자 중심 프레젠테이션은 하나의 핵심 아이디어, 명확한 주장, 시각적 근거를 활용합니다.",
+        size_override: "역할별 크기 직접 지정:",
+        size_role_title: "제목",
+        size_role_subtitle: "부제목",
+        size_role_annotation: "주석",
+        custom_typography: "사용자 지정 타이포그래피",
+        custom_color: "사용자 지정 색상",
+        custom_color_placeholder: "색상을 글로 설명하세요 (예: 짙은 네이비 메인, 따뜻한 주황 포인트, 흰색 배경) — 또는 HEX 값을 붙여넣으세요…",
+        role_background: "배경",
+        role_secondary_bg: "보조 배경",
+        role_primary: "기본색",
+        role_accent: "포인트색",
+        role_secondary_accent: "보조 포인트색",
+        role_body_text: "본문 텍스트",
+        cjk: "한중일 글자",
+        latin: "라틴 글자",
+        sample_heading_cjk: "테마 테마 제목",
+        sample_heading_latin: "Presentation Title",
+        sample_body_cjk: "핵심 정보 요약",
+        sample_body_latin: "Key message summary",
+        style_preview_label: "전체적인 느낌 (색상 + 타이포그래피 + 아이콘)",
+        style_preview_body: "· 대략적인 느낌만 확인하는 용도이며, 실제 슬라이드 레이아웃이 아닙니다.",
+        no_icons: "아이콘 없음",
+        preview_big_title: "메인 제목",
+        preview_section_title: "섹션 제목",
+        preview_latin_title: "Section Title",
+        preview_body_intro: "본문 텍스트는 기준 리듬과 대비를 보여줍니다.",
+        preview_latin_body: "Body text sample for checking Latin typography.",
+        preview_point_1_title: "본문 내용",
+        preview_point_1_text: "이 영역을 통해 단락 밀도와 줄 간격을 가늠해 보세요.",
+        preview_point_2_title: "핵심 포인트",
+        preview_point_2_text: "아이콘은 단독으로 떠 있지 않고 실제 텍스트 옆에배치됩니다.",
+        preview_point_3_title: "결론",
+        preview_point_3_text: "발표 화면 스케일에서도 가독성이 유지되어야 합니다.",
+        preview_point_3_text: "발표용 스케일에서도 읽기 쉽게 유지되어야 합니다.",
+        mode_continuous_desc: "전체 프레젠테이션을 한 번에 생성합니다.",
+        mode_split_desc: "사양 작성 후 중단하며, 새 창에서 SVG 생성을 재개합니다.",
+        refine_off_desc: "디자인 사양(Design Spec)과 실행 잠금을 순차적으로 작성한 후 자동으로 진행합니다.",
+        refine_on_desc: "디자인 사양(Design Spec) 작성 후 중단합니다. 채팅에서 모든 부분을 수정할 수 있으며, 승인 후 실행 잠금을 생성하고 생성을 계속합니다.",
+        off_default: "꺼짐",
+        on: "켜짐",
+        option_prefix: "옵션",
+        error_retry: "오류 - 재시도"
+      }
     };
 
     var LANG = (function () {
         try {
             var stored = window.localStorage.getItem("ppt_lang");
-            if (stored === "zh" || stored === "en" || stored === "ja" ||
+            if (stored === "zh" || stored === "en" || stored === "ja" || stored === "ko" || 
                     stored === "zh-TW") return stored;
         } catch (e) { /* ignore */ }
         var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
@@ -758,6 +941,7 @@
             if (/\bhant\b/.test(nav) || /\b(tw|hk|mo)\b/.test(nav)) return "zh-TW";
             return "zh";
         }
+        if (nav.indexOf("ko") === 0) return "ko";
         if (nav.indexOf("ja") === 0) return "ja";
         return "en";
     })();
@@ -775,7 +959,8 @@
         zh: ["zh", "en", "ja", "zh_tw"],
         en: ["en", "zh", "ja", "zh_tw"],
         ja: ["ja", "en", "zh", "zh_tw"],
-        "zh-TW": ["zh_tw", "zh", "en", "ja"]
+        "zh-TW": ["zh_tw", "zh", "en", "ja"],
+        ko: ["ko", "zh", "en", "ja", "zh_tw"],
     };
     // Suffix used to look up localized catalog/recommendation fields.
     var LANG_FIELD = { "zh-TW": "zh_tw" };
@@ -785,26 +970,26 @@
     }
     var IMAGE_COMPARISON_LABELS = {
         rendering: {
-            "vector-illustration": { zh: "矢量插画", zh_tw: "向量插畫", en: "Vector illustration", ja: "ベクターイラスト" },
-            flat: { zh: "扁平插画", zh_tw: "扁平插畫", en: "Flat illustration", ja: "フラットイラスト" },
-            "3d-isometric": { zh: "3D 等距", zh_tw: "3D 等距", en: "3D isometric", ja: "3Dアイソメトリック" },
-            "digital-dashboard": { zh: "数字仪表盘", zh_tw: "數位儀表板", en: "Digital dashboard", ja: "デジタルダッシュボード" },
-            "corporate-photo": { zh: "企业摄影", zh_tw: "企業攝影", en: "Corporate photo", ja: "企業写真" },
-            blueprint: { zh: "蓝图线稿", zh_tw: "藍圖線稿", en: "Blueprint", ja: "ブループリント" },
-            editorial: { zh: "编辑杂志", zh_tw: "編輯雜誌", en: "Editorial", ja: "エディトリアル" },
-            "sketch-notes": { zh: "手绘笔记", zh_tw: "手繪筆記", en: "Sketch notes", ja: "スケッチノート" },
-            "ink-notes": { zh: "墨线笔记", zh_tw: "墨線筆記", en: "Ink notes", ja: "インクノート" },
-            chalkboard: { zh: "粉笔黑板", zh_tw: "粉筆黑板", en: "Chalkboard", ja: "チョークボード" },
-            watercolor: { zh: "水彩", zh_tw: "水彩", en: "Watercolor", ja: "水彩" },
-            "warm-scene": { zh: "暖调场景", zh_tw: "暖調場景", en: "Warm scene", ja: "暖色シーン" },
-            "screen-print": { zh: "丝网印刷", zh_tw: "絲網印刷", en: "Screen print", ja: "スクリーンプリント" },
-            "fantasy-animation": { zh: "幻想动画", zh_tw: "幻想動畫", en: "Fantasy animation", ja: "ファンタジーアニメ" },
-            "pixel-art": { zh: "像素艺术", zh_tw: "像素藝術", en: "Pixel art", ja: "ピクセルアート" },
-            nature: { zh: "自然有机", zh_tw: "自然有機", en: "Nature", ja: "自然・オーガニック" },
-            "minimalist-swiss": { zh: "瑞士极简", zh_tw: "瑞士極簡", en: "Minimalist Swiss", ja: "スイスミニマル" },
-            glassmorphism: { zh: "玻璃拟态", zh_tw: "玻璃擬態", en: "Glassmorphism", ja: "グラスモーフィズム" },
-            "vintage-poster": { zh: "复古海报", zh_tw: "復古海報", en: "Vintage poster", ja: "ヴィンテージポスター" },
-            "paper-cut": { zh: "剪纸拼贴", zh_tw: "剪紙拼貼", en: "Paper cut", ja: "ペーパーカット" }
+            "vector-illustration": { zh: "矢量插画", zh_tw: "向量插畫", en: "Vector illustration", ja: "ベクターイラスト", ko: "벡터 설명" },
+            flat: { zh: "扁平插画", zh_tw: "扁平插畫", en: "Flat illustration", ja: "フラットイラスト", ko: "플랫 설명" },
+            "3d-isometric": { zh: "3D 等距", zh_tw: "3D 等距", en: "3D isometric", ja: "3Dアイソメトリック", ko: "3D 등각" },
+            "digital-dashboard": { zh: "数字仪表盘", zh_tw: "數位儀表板", en: "Digital dashboard", ja: "デジタルダッシュボード", ko: "디지털 대시보드" },
+            "corporate-photo": { zh: "企业摄影", zh_tw: "企業攝影", en: "Corporate photo", ja: "企業写真", ko: "회사 사진" },
+            blueprint: { zh: "蓝图线稿", zh_tw: "藍圖線稿", en: "Blueprint", ja: "ブループリント", ko: "블루프린트" },
+            editorial: { zh: "编辑杂志", zh_tw: "編輯雜誌", en: "Editorial", ja: "エディトリアル", ko: "사설" },
+            "sketch-notes": { zh: "手绘笔记", zh_tw: "手繪筆記", en: "Sketch notes", ja: "スケッチノート", ko: "스케치 노트" },
+            "ink-notes": { zh: "墨线笔记", zh_tw: "墨線筆記", en: "Ink notes", ja: "インクノート", ko: "잉크 노트" },
+            chalkboard: { zh: "粉笔黑板", zh_tw: "粉筆黑板", en: "Chalkboard", ja: "チョークボード", ko: "칠판" },
+            watercolor: { zh: "水彩", zh_tw: "水彩", en: "Watercolor", ja: "水彩", ko: "워터 컬러" },
+            "warm-scene": { zh: "暖调场景", zh_tw: "暖調場景", en: "Warm scene", ja: "暖色シーン", ko: "따뜻한 풍경" },
+            "screen-print": { zh: "丝网印刷", zh_tw: "絲網印刷", en: "Screen print", ja: "スクリーンプリント", ko: "스크린 프린트" },
+            "fantasy-animation": { zh: "幻想动画", zh_tw: "幻想動畫", en: "Fantasy animation", ja: "ファンタジーアニメ", ko: "판타지 애니메이션" },
+            "pixel-art": { zh: "像素艺术", zh_tw: "像素藝術", en: "Pixel art", ja: "ピクセルアート", ko: "픽셀 아트" },
+            nature: { zh: "自然有机", zh_tw: "自然有機", en: "Nature", ja: "自然・オーガニック", ko: "자연" },
+            "minimalist-swiss": { zh: "瑞士极简", zh_tw: "瑞士極簡", en: "Minimalist Swiss", ja: "スイスミニマル", ko: "" },
+            glassmorphism: { zh: "玻璃拟态", zh_tw: "玻璃擬態", en: "Glassmorphism", ja: "グラスモーフィズム", ko: "글래스모피즘" },
+            "vintage-poster": { zh: "复古海报", zh_tw: "復古海報", en: "Vintage poster", ja: "ヴィンテージポスター", ko: "빈티지 포스터" },
+            "paper-cut": { zh: "剪纸拼贴", zh_tw: "剪紙拼貼", en: "Paper cut", ja: "ペーパーカット", ko: "페이퍼 컷" }
         }
     };
 
@@ -864,13 +1049,13 @@
     }
 
     function applyStaticTranslations() {
-        document.documentElement.setAttribute("lang", LANG === "zh" ? "zh-CN" : (LANG === "zh-TW" ? "zh-TW" : (LANG === "ja" ? "ja" : "en")));
+        document.documentElement.setAttribute("lang", LANG === "zh" ? "zh-CN" : (LANG === "zh-TW" ? "zh-TW" : (LANG === "ja" ? "ja" : (LANG === "ko" ? "ko" : "en"))));
         document.querySelectorAll("[data-i18n]").forEach(function (node) {
             node.textContent = t(node.getAttribute("data-i18n"));
         });
     }
 
-    var LANG_NAMES = { zh: "中文", en: "English", ja: "日本語", "zh-TW": "繁體中文" };
+    var LANG_NAMES = { ko: "한국어", zh: "中文", en: "English", ja: "日本語", "zh-TW": "繁體中文" };
 
     function refreshLangToggle(toggleBtn) {
         // Custom dropdown (OS-independent): button shows the CURRENT language.
@@ -952,7 +1137,7 @@
     }
 
     function visualStylePreviewSrc(id) {
-        return "/static/style_previews/" + encodeURIComponent(id || "") + ".svg";
+        return "./static/style_previews/" + encodeURIComponent(id || "") + ".svg";
     }
 
     function appendVisualStyleImage(parent, id) {
@@ -1494,7 +1679,7 @@
                 label = label + (o.dim ? " · " + o.dim : "");
             } else {
                 if (o.dim) label += " · " + o.dim;
-                if (desc) label += (LANG === "zh" || LANG === "ja" ? "：" : " — ") + desc;
+                if (desc) label += (LANG === "ko" || LANG === "zh" || LANG === "ja" ? "：" : " — ") + desc;
                 if (spec && spec.note) label += " · " + spec.note;
             }
             copy.appendChild(el("span", "chip-text", label));
@@ -1681,7 +1866,7 @@
     }
 
     function setUiLanguageAttributes(node) {
-        node.lang = LANG === "zh" ? "zh-CN" : (LANG === "zh-TW" ? "zh-TW" : (LANG === "ja" ? "ja-JP" : "en-US"));
+        node.lang = LANG === "zh" ? "zh-CN" : (LANG === "zh-TW" ? "zh-TW" : (LANG === "ja" ? "ja-JP" : (LANG === "ko" ? "ko-KR" : "en-US")));
         node.dir = "ltr";
     }
 
@@ -3763,7 +3948,7 @@
         (CAT.image_usage || []).forEach(function (option) {
             var label = optionLabel(option);
             var desc = optionDesc(option);
-            if (desc) label += (LANG === "zh" || LANG === "ja" ? "：" : " — ") + desc;
+            if (desc) label += (LANG === "ko" || LANG === "zh" || LANG === "ja" ? "：" : " — ") + desc;
             var chip = el("div", "chip");
             chip.appendChild(el("span", "chip-text", label));
             if (recommendedIds.indexOf(option.id) >= 0) {
@@ -4236,7 +4421,7 @@
     function submitStage(payload, nextStage) {
         var btn = document.getElementById("btn-confirm");
         btn.disabled = true;
-        fetch("/api/confirm", {
+        fetch("./api/confirm", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -4363,14 +4548,14 @@
         if (!designSystemValid(payload)) return;
         if (!customSelectionsValid(payload)) return;
         btn.disabled = true;
-        fetch("/api/confirm", {
+        fetch("./api/confirm", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         }).then(function (r) {
             if (!r.ok) throw new Error("confirm failed");
             showConfirmedOverlay();
-            fetch("/api/shutdown", {
+            fetch("./api/shutdown", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ reason: "confirmed" })
@@ -4410,23 +4595,23 @@
     }
 
     function loadCatalogs() {
-        return fetchJson("/api/catalogs", "catalogs")
-            .catch(function () { return fetchJson("/static/catalogs.json", "static catalogs"); });
+        return fetchJson("./api/catalogs", "catalogs")
+            .catch(function () { return fetchJson("./static/catalogs.json", "static catalogs"); });
     }
 
     function loadIconPreviews() {
-        return fetchJson("/api/icon-previews", "icon previews")
+        return fetchJson("./api/icon-previews", "icon previews")
             .catch(function () { return {}; });
     }
 
     function loadAiImageComparison() {
-        return fetchJson("/api/ai-image-comparison", "AI image comparison")
+        return fetchJson("./api/ai-image-comparison", "AI image comparison")
             .catch(function () { return {}; });
     }
 
     function applyServerLanguage(data) {
         var requested = data && data.lang;
-        if (requested !== "zh" && requested !== "en" && requested !== "ja" &&
+        if (requested !== "zh" && requested !== "en" && requested !== "ja" && requested !== "ko" && 
                 requested !== "zh-TW") return;
         var hasStored = false;
         try { hasStored = !!window.localStorage.getItem("ppt_lang"); } catch (e) { /* ignore */ }
@@ -4440,7 +4625,7 @@
     function loadStrategistUi(forceStage) {
         return Promise.all([
             loadCatalogs(),
-            fetchJson("/api/recommendations", "recommendations"),
+            fetchJson("./api/recommendations", "recommendations"),
             loadIconPreviews(),
             loadAiImageComparison()
         ]).then(function (res) {
@@ -4479,7 +4664,7 @@
         var chooseLang = function (v) {
             setMenuOpen(false);
             toggleBtn.focus();
-            if (v !== "ja" && v !== "en" && v !== "zh" && v !== "zh-TW") return;
+            if (v !== "ja" && v !== "en" && v !== "zh" && v !== "zh-TW" && v !== "ko") return;
             if (v === LANG) return;
             LANG = v;
             try { window.localStorage.setItem("ppt_lang", LANG); } catch (e2) { /* ignore */ }
@@ -4550,7 +4735,7 @@
         // Session remains the first network read so completed runs can close
         // cleanly. Active runs always load the current Strategist stage; Stage 1
         // carries its template catalog inside the recommendation payload.
-        fetchJson("/api/session", "session").catch(function () {
+        fetchJson("./api/session", "session").catch(function () {
             return { phase: "strategist" };
         }).then(function (session) {
             if (session && session.status === "done") {

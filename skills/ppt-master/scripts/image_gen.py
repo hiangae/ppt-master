@@ -224,6 +224,13 @@ BACKEND_REGISTRY = {
         "default_image_size": "1K",
         "key_hint": "OPENROUTER_API_KEY",
     },
+    "comfyui": {
+        "module": "backend_comfyui",
+        "tier": "experimental",
+        "label": "ComfyUI",
+        "default_model": "z_image_turbo_nvfp4.safetensors",
+        "key_hint": "COMFYUI_BASE_URL (no API key required for local)",
+    },
 }
 
 TIER_ORDER = {"core": 0, "extended": 1, "experimental": 2}

@@ -113,7 +113,7 @@ _LIST_CACHE: dict = {}  # path -> (mtime, annotation_count_on_disk)
 # Keep live preview on a separate range from Confirm UI so a stale preview tab
 # cannot send ``/api/shutdown`` to a later Confirm UI process.
 DEFAULT_PORT = 6060
-PUBLIC_HOST = '127.0.0.1'
+PUBLIC_HOST = '0.0.0.0'
 STARTUP_TIMEOUT = 15
 
 

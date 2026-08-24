@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="page_title">PPT Master - Confirm Design</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="./static/style.css">
 </head>
 <body>
     <div id="app">
@@ -29,6 +29,7 @@
                     <div class="lang-select">
                         <button id="btn-lang-toggle" class="lang-select-btn" type="button" title="Switch language" aria-haspopup="listbox" aria-expanded="false"><span id="lang-current"></span><span class="lang-caret" aria-hidden="true">▾</span></button>
                         <ul id="lang-menu" class="lang-menu" role="listbox" hidden>
+                            <li role="option" tabindex="0" aria-selected="false" data-lang="ko">한국어</li>
                             <li role="option" tabindex="0" aria-selected="false" data-lang="zh">中文</li>
                             <li role="option" tabindex="0" aria-selected="false" data-lang="zh-TW">繁體中文</li>
                             <li role="option" tabindex="0" aria-selected="false" data-lang="en">English</li>
@@ -57,6 +58,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="./static/app.js"></script>
 </body>
 </html>
