@@ -18,7 +18,7 @@ Choose the route by the artifact you already have and the result you want:
 
 | Starting point and goal | Route | Copy-ready request |
 |---|---|---|
-| A raw `.pptx`; keep its existing slide shells and replace content | **Fill Native PPTX** | `Fill projects/source/template.pptx with projects/source/content.md.` |
+| A raw `.pptx`; keep its existing slide shells and replace content | **Edit Native PPTX** | `Fill projects/source/template.pptx with projects/source/content.md; keep its design and use only the pages that fit.` |
 | A reusable Brand/Style/Layout/Deck workspace; generate a fresh deck | **Generate PPTX → Stage-1 template controls** | `Make a deck from sources/report.pdf with template skills/ppt-master/templates/layouts/presentation_core/.` |
 | A PPTX, SVG set, brand guide, website, images, or mixed references; first build a reusable system | **Create Template → Generate PPTX** | `Use /create-template to create a reusable Deck workspace from projects/brand/our_deck.pptx.` |
 
@@ -65,9 +65,10 @@ not infer a specific template from the topic.
 > request are validated and used directly, with at most one contribution per
 > kind. Layout and Deck may coexist, with Layout taking structural precedence;
 > a multi-kind root contributes all of its specs.
-> No exact root means free design. Bare names still do not resolve. Quick remains
-> a lockless flat export, so Layout/Deck prototypes are authoring inputs rather
-> than reusable native Master/Layout output.
+> No exact root means free design. Bare names still do not resolve. Quick is
+> lockless, not structureless: free design and Brand/Style-only output stays
+> flat, while an installed Layout/Deck structure owner remains explicit
+> Master/Layout/slot metadata in the authored SVGs and exported PPTX.
 
 ### How to use the selector
 
@@ -101,7 +102,17 @@ Stage 2 then compares the confirmed communication contract with that installed
 state; `template_application` describes **how** to use it and never chooses
 **which** template to use.
 
-> **Compatibility preflight:** Step 3 also accepts a legacy-flat Brand/Layout/Deck workspace with `design_spec.md` directly at the supplied root when it satisfies the current kind contract. Layout/Deck additionally require current structured SVGs; Style has no flat form. Former atomic-placeholder, unmapped Master/Layout, and other semantic-legacy packages are rejected; run `create-template` to create a new workspace, then generate new structured pages from that workspace. Nothing upgrades the old package in place.
+`template_application` is one natural-language paragraph, not a mode selector.
+Explicit user instructions win; otherwise the AI reads every installed template
+SVG, decides from the current content, and defaults to reference-led use when no
+stronger fit exists. Reference-led use may redesign after studying the full
+roster; augment-only preserves existing non-slot objects, permits slot edits,
+and only adds; replacement-only changes information carriers while preserving
+the rest. These are examples, not fixed options. Any prototype-specific exception
+names the exact SVG basename. Quick makes and freezes the same paragraph only in
+its active context instead of writing confirmation/spec artifacts.
+
+> **Current-workspace preflight:** Step 3 accepts only a workspace root exposing its Design Spec under `templates/`. Flat-root, former atomic-placeholder, unmapped Master/Layout, and other semantic-legacy packages are rejected; run `create-template` to create a new workspace, then generate new structured pages from that workspace. Nothing upgrades the old package in place.
 
 ### What does NOT select a template automatically
 
@@ -244,29 +255,35 @@ strategy so deterministic tools can run:
 
 - a compact reusable system when the request calls for distillation;
 - broader source-aligned coverage when the source itself contains useful variants;
-- literal materialization when the request calls for preservation and the source has a complete supported structure contract.
+- compact mirror authoring when the request calls for preservation and the source has a complete supported structure contract.
 
 Layout/Deck frontmatter still records `replication_mode: standard|fidelity|mirror` for tool compatibility and audit. It is an implementation record, not a user-facing choice. Style frontmatter intentionally has no replication/native-structure fields. A brand-neutral Layout cannot literally preserve brand/application facts; the AI either re-authors it as a Layout or keeps those facts in a Deck according to the requested result.
 
 **About sprite sheets**: PPTX-exported assets are often a single large image referenced from multiple slides, each cropping a different region via nested `<svg viewBox=...>` wrappers. In `fidelity` and `mirror` modes this nesting must be preserved — you cannot flatten it to a bare `<image>`, or the crop is lost and the page misaligns. The workflow validates this automatically.
 
-**About native PowerPoint shapes**: the lossless import SVG stays immutable in the temporary analysis workspace as native-payload backing. Template creation uses the lightweight editable `authoring-svg/` IR and its source-ref/hash manifest. Authored modes use project-canonical SVG and compact authored-preset groups only for exact registered preset matches. Mirror materializes final template SVGs from the IR, reusing converter-supported payload only for unchanged Slide-local/slot refs; fixed Master/Layout layers remain direct atoms, unsupported or edited objects keep the current SVG fallback, and final templates contain no IR-only refs.
+**About native PowerPoint shapes**: the lossless import SVG stays immutable as source/package evidence and supported non-visible payload backing. Template creation uses the new compact editable `authoring-svg/` tree and its source-ref/hash manifest. Template_Designer reviews/authors that tree for mirror, preserving structure, meaning, and similar presentation without requiring identical SVG code. The publisher validates/composes the current visible tree and never restores ordinary lossless subtrees; final templates contain no IR-only refs. Imported/template-owned Chart/Table JSON remains inline and authoritative, while its compact preview may be approximate.
 
-For a PPTX-backed Type A mirror, that final step is one deterministic command:
+For a PPTX-backed Type A mirror, final validation/publication uses one deterministic command after the authoring review:
 
 ```bash
 python3 skills/ppt-master/scripts/mirror_template_materialize.py \
   "<import_workspace>" "<template_workspace>"
 ```
 
-It validates the IR manifest, immutable source hashes, complete native graph,
-visibility facts, and imported-vector closure before atomically publishing the
-source-ordered SVG roster and its `icons/imported/` / `images/` assets. It never
+It validates source SHA/known refs, the authoring manifest, reachable native
+graph, visibility/assignment facts, and imported-vector closure before atomically publishing the
+current source-ordered SVG roster and assets. It never
 requires or uses the opt-in `svg-flat/` verification tree as the template source
 and never generates a Design Spec; the designer writes the resolved spec
 against the published roster.
 
-**Mirror graph boundary**: mirror preserves the complete supported source Master/Layout graph. It emits one complete prototype per source slide and one definition-only `layout_<layout_key>.svg` prototype for every source Layout unused by those slides. The latter registers in PowerPoint through the independent Layout roster without becoming a published page; its parent Master is retained with it. Preflight stops only when required source facts or supported geometry are missing, never merely because a Layout is unused.
+**Mirror graph boundary**: mirror emits one complete prototype per source Slide and preserves only each Slide's referenced Layout and parent Master. The SVG resolves Master + Layout + Slide context while keeping layer ownership explicit. Source Master/Layout identities unused by every Slide are not materialized by mirror; `standard` / `fidelity` may use the complete source inventory to author useful new Slide prototypes.
+
+The Design Spec gives every emitted Slide prototype its normal roster row. When the source contains unreferenced Master/Layout identities, one scope sentence may note that they exist but were not materialized by mirror; it does not invent per-identity usage analysis.
+
+Template use is Slide-first: each generated-page SVG already resolves its Master and Layout visuals, so normal authoring selects that complete Slide prototype. The workspace contains no standalone Master/Layout definition SVGs.
+
+“Slide-only” describes the editable SVG roster. A PPTX-backed mirror may also carry tool-only structural sidecars such as `source_themes.json` and `native_payloads.json.gz`; they preserve exact reachable Theme plus supported opaque restoration payloads/attribute records and are not page prototypes or AI authoring inputs. Semantic Chart/Table JSON always stays inline in its SVG marker.
 
 **How a mirror-authored workspace is consumed**: source-to-workspace `replication_mode: mirror` is a capability, not a project choice. Strategist inspects the actual prototypes, current content, and any explicit instruction, then decides which pages to select, repeat, skip, or reorder and whether literal, structural, or visual-only reuse is appropriate. Literal reuse copies a complete prototype and edits only allowed visible text values while preserving decoration, sprite crops, geometry, and normalized structured declarations. This never requires the source page count or order.
 
@@ -299,7 +316,7 @@ Brand/Style use is intentionally different: both keep authored content Slide-loc
 
 `exports/<id>_template_preview.pptx` is review evidence created by Create Template when requested or required. It is not the template input; generation always consumes the workspace root.
 
-Microsoft PowerPoint is the acceptance target for Master/Layout behavior. Keynote, WPS, and LibreOffice can open PPTX files but may normalize template structure or load a large mirror roster of unused Layouts more slowly.
+Microsoft PowerPoint is the acceptance target for Master/Layout behavior. Keynote, WPS, and LibreOffice can open PPTX files but may normalize template structure.
 
 ### What a derived template workspace looks like
 
@@ -360,7 +377,7 @@ Common misconceptions to avoid:
 - **A template is not one undifferentiated "style skin".** Brand, Style, Layout, and Deck deliberately separate identity, direction/method, structure, and application so each segment can be reused or combined under an explicit ownership rule
 - **A template does not make content decisions for you.** The Strategist still decides per-page which layout to use and whether to extend a variant. Templates offer candidates, not predetermined results
 - **`fidelity` mode is not pixel-perfect copying.** Even with `literal` fidelity, the AI still strips noise and unnecessary repetition — geometry stays, redundancy goes
-- **`mirror` targets literal supported appearance and source topology, not byte-identical OOXML.** It inherits source import limitations and permits only mechanical normalization such as fixed-layer group expansion. Unsupported native objects keep their available SVG fallback or are reported; mirror never synthesizes replacement ownership.
+- **`mirror` targets literal supported appearance and each source Slide's reachable topology, not byte-identical OOXML.** It inherits source import limitations and permits only mechanical normalization such as inheritance completion and fixed-layer group expansion. Unsupported native objects keep their available SVG fallback or are reported; mirror never synthesizes replacement ownership.
 
 ---
 

@@ -51,12 +51,12 @@ The `npx skills add hugohe3/ppt-master` installation path also requires a workin
 
 | You want… | Route | What happens |
 |---|---|---|
-| **Use this deck's native slide shells with new content** | Fill Native PPTX | Clones the selected source slides and patches text / table / chart data directly in OOXML. The source design remains native; output is a new filled deck bound to the available slide shells. |
+| **Use this deck's native slide shells with new content** | Edit Native PPTX | Imports a round-trip workspace; unchanged pages restore byte-for-byte, `page_plan.json` may select/reorder/repeat/omit pages, and only planned pages are edited. |
 | **Build a reusable design system, then generate a new deck** | Create Template → Generate PPTX | Creates a validated Brand, Style, Layout, or Deck workspace from the reference, then authors a fresh deck. The new story, structure, and page count can differ from the source. |
 
-For the first, give the AI your `.pptx` plus your material (or a topic) and ask it to "fill this deck with the new content" — see the [template-fill workflow](../skills/ppt-master/workflows/template-fill-pptx.md). The rest of this section covers create-template.
+For the first, give the AI your `.pptx` plus your material (or a topic) and ask it to "fill this deck with the new content" — see the [Edit Native PPTX workflow](../skills/ppt-master/workflows/edit-native-pptx.md). The rest of this section covers create-template.
 
-**To build a reusable workspace from an existing PowerPoint, explicitly request the Create Template route.** A raw `.pptx` plus new material otherwise belongs to Fill Native PPTX; it is not a Generate template workspace. Create the workspace first:
+**To build a reusable workspace from an existing PowerPoint, explicitly request the Create Template route.** A raw `.pptx` plus new material otherwise belongs to Edit Native PPTX; it is not a Generate template workspace. Create the workspace first:
 
 ```
 You: Create a reusable Deck template from projects/brand/our_deck.pptx via /create-template
@@ -108,14 +108,18 @@ You: Quickly generate a deck from sources/report.pdf — no need to confirm with
 You: Turn this into a deck, skip the confirmation, about 8 pages, dark corporate look
 ```
 
-**Whatever you state explicitly is followed; whatever you leave unspecified the agent decides directly, without coming back to ask.** The page count and the look in the second example still hold — quick mode drops the round trip, not your say. State nothing, and the agent decides everything.
+**Whatever you state explicitly is followed; whatever you leave unspecified the agent decides directly, without coming back to ask.** The page count and the look in the second example still hold — quick mode drops the round trip, not your say. Instead of materializing Default's three directions, Quick directly executes the direction that Default would recommend: the strongest overall fit for free design, or the viable direction most fully expressing installed template context. State nothing, and the agent decides everything.
 
 Quick mode never opens the Confirm UI template selector. Give it up to one exact
 Brand / Style / Layout / Deck workspace root per kind and it validates,
 installs, and uses them directly; give it no exact root and it uses free design.
 A bare template name or style phrase is still only a design brief. Quick keeps
-its lockless flat export, so Layout / Deck prototypes guide the authored pages
-but do not compile into reusable native Master / Layout objects.
+its lockless workflow but preserves template capability: free design and
+Brand / Style-only output stays flat, while a supplied Layout / Deck workspace
+keeps explicit Master / Layout / slot metadata in the authored SVGs and compiles
+it into reusable native structure. Before P01, the agent reads every installed
+template SVG and freezes one natural-language application paragraph in active
+context; no confirmation/spec artifact is created.
 
 It does not skip capabilities: source conversion, research on identified factual gaps, shared aesthetic guidance, image / icon preparation, and native-shape / chart / table authoring still run as needed. Structural formulas are authored directly as native PowerPoint markers rather than prepared as image assets. A missing explicitly selected manual asset or other irreplaceable file dependency blocks until you provide it. If automated AI generation or required dependent slicing is exhausted, Quick removes the failed jobs and stale manifest entries, replans with native editable text/SVG or already-prepared non-AI assets, continues the same run, and reports the replacement in its final handoff.
 

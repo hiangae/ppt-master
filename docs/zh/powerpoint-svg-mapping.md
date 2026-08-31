@@ -45,14 +45,14 @@ PowerPoint 意图
 | 对象位置与尺寸 | SVG 绝对坐标与元素边界 | `a:xfrm` 偏移和范围 | 经坐标换算后为 `Native-normalized` | 数值必须有限，并使用已登记坐标语法 |
 | Z 顺序 | SVG 源码顺序，由后到前 | PowerPoint shape tree 顺序 | 按 shape tree 顺序重建 | 不得依赖浏览器专属堆叠行为 |
 | 旋转、缩放、平移与镜像 | 受支持的 SVG transform 形式 | DrawingML transform 或归一化几何 | `Native-normalized`；matrix 可能被分解 | 已登记 transform 合同以外的倾斜与错切不可接受 |
-| 主题颜色与字体 | Default 使用 `spec_lock.md` 锚定的稳定角色；Quick 在当前上下文维持临时设计锚点，但不持久化 lock | Default 派生包内 Theme，并在精确匹配锚点角色时保留 theme token，否则写直接 DrawingML 值；Quick 使用转换器默认 Theme 脚手架，并把 SVG 派生的页面颜色与字体写成直接值 | 已登记角色与直接值为 `Native-stable` | Default 校验 lock 对齐，Quick 跳过该比较；两者都拒绝非法值，字体可移植性与目标系统可用性仅作提示；情境色和 export-safe 一次性字体仍然允许 |
+| 主题颜色与字体 | Default 使用 `spec_lock.md` 锚定的稳定角色；Quick 在当前上下文维持临时设计锚点，但不持久化 lock | Default 派生包内 Theme，并在精确匹配锚点角色时保留 theme token，否则写直接 DrawingML 值。Flat Quick 使用转换器默认 Theme 脚手架；structured Quick 在工作区提供时保留逐 Master 源 Theme，并从语义 slot carrier 推导 Master 标题／正文字号默认值；SVG 页面颜色与字体仍写成直接值 | 已登记角色与直接值为 `Native-stable` | Default 校验 lock 对齐，Quick 跳过该比较；两者都拒绝非法值，字体可移植性与目标系统可用性仅作提示；情境色和 export-safe 一次性字体仍然允许 |
 | PowerPoint 包身份 | `spec_lock.md` 结构声明与打包器 | Presentation、Master、Layout、relationship 与 content type 注册 | 从包结构读回，不从页面外观推断 | 最终包读回必须与声明的 roster 一致 |
 
 受支持的画布见 [`canvas-formats.md`](../../skills/ppt-master/references/canvas-formats.md)，根 `viewBox` 的规范合同见 [`shared-standards-core.md` §4.1](../../skills/ppt-master/references/shared-standards-core.md#41-semantic-svg-marker-contract)。
 
 ## 2. Master、Layout、背景与占位符功能
 
-**路线边界**：主 SVG 流程中的自由生成与 brand-only 项目从规划到导出始终使用 `pptx_structure.mode: flat`；`flat` 不是等待导出器自动升级的临时状态。即使多个页面出现相同 Logo、页脚或排版，导出器也不得据此切换到 `structured`，不得自动提升到 Master/Layout，也不得推断占位符或去重。若输出需要可复用的原生 Master、Layout 或占位符，Step 3 必须消费一个已校验的 deck/layout 模板工作区；没有该工作区时，先走 [`create-template`](../../skills/ppt-master/workflows/create-template.md)，再返回主流程。flat 导出创建的最小 Master 和 Blank Layout 只是 PPTX 格式必需的包结构，不是从页面总结出的设计母版。直接使用原始 PPTX 模板填充新内容仍走 [`template-fill-pptx`](../../skills/ppt-master/workflows/template-fill-pptx.md)。
+**路线边界**：主 SVG 流程中的自由生成与 brand-only 项目从规划到导出始终使用 `pptx_structure.mode: flat`；`flat` 不是等待导出器自动升级的临时状态。即使多个页面出现相同 Logo、页脚或排版，导出器也不得据此切换到 `structured`，不得自动提升到 Master/Layout，也不得推断占位符或去重。若输出需要可复用的原生 Master、Layout 或占位符，Step 3 必须消费一个已校验的 deck/layout 模板工作区；没有该工作区时，先走 [`create-template`](../../skills/ppt-master/workflows/create-template.md)，再返回主流程。flat 导出创建的最小 Master 和 Blank Layout 只是 PPTX 格式必需的包结构，不是从页面总结出的设计母版。保留原设计并向原始 PPTX 填充新内容时，走 [`edit-native-pptx`](../../skills/ppt-master/workflows/edit-native-pptx.md)。
 
 | PowerPoint 功能 | 项目表达 | PPTX 结果 | 回导与保真度 | 校验边界 |
 |---|---|---|---|---|
@@ -120,18 +120,18 @@ PowerPoint 意图
 | 字号 | 有限、无单位的 SVG px，例如 `font-size="24"` | DrawingML 百分之一磅；`1 px = 0.75 pt` | 单位转换后为 `Native-stable` | 生成创作只使用无单位 px；已登记历史单位是会产生 warning 的兼容输入，未知单位为 error；DrawingML 下限为 1 pt |
 | 字重 | `<text>`/`<tspan>` 上已登记的 `font-weight` | DrawingML 常规/粗体 run 开关 | `Native-normalized`；数值字重会折叠到 DrawingML 布尔边界 | 精确取值语法与别名属于 [`svg-effects.md` §6.7](../../skills/ppt-master/references/svg-effects.md#67-advanced-text-treatments) |
 | 斜体、下划线与删除线 | `<text>`/`<tspan>` 上已登记的 `font-style` / `text-decoration` | DrawingML 斜体、下划线与删除线 run 属性 | 已登记 token 为 `Native-stable` | 拒绝未知 token；精确语法属于 [`svg-effects.md` §6.7](../../skills/ppt-master/references/svg-effects.md#67-advanced-text-treatments) |
-| 普通文本上标与下标 | `<tspan>` 上精确的直接属性 `baseline-shift="super|sub"`；显式 run `font-size` 与之独立 | 可编辑普通文本 `a:rPr@baseline`，取值为 `30000` / `-25000`；不会自动缩小字号 | 前向导出为原生能力。PPTX-to-SVG 不在可见 SVG 中重建 baseline shift；未修改的导入 `txBody` metadata 与源保留型原生工作流仍可保留来源 run | 拒绝 inline style、其他元素、数值偏移及与行内公式 marker 组合；结构化数学使用可编辑 OMML，Unicode 字形仍是字面文字 |
+| 普通文本上标与下标 | `<tspan>` 上精确的直接属性 `baseline-shift="super|sub"`；显式 run `font-size` 与之独立 | 可编辑普通文本 `a:rPr@baseline`，取值为 `30000` / `-25000`；不会自动缩小字号 | 前向导出为原生能力。PPTX-to-SVG 不在可见 SVG 中重建 baseline shift；未修改的导入 `txBody` metadata 与 Edit Native PPTX 仍可保留来源 run | 拒绝 inline style、其他元素、数值偏移及与行内公式 marker 组合；结构化数学使用可编辑 OMML，Unicode 字形仍是字面文字 |
 | 纯色/渐变文本填充与透明度 | 规范纯色/渐变 fill 加 run alpha | DrawingML run fill 与 alpha | `Native-normalized` | 使用语义 alpha 通道，不使用未登记 CSS 效果 |
 | 图片或纹理文本填充 | `<text>` / 不带定位的 `<tspan>` 的 fill 引用一个带注解的单图 `pattern` | 可编辑 DrawingML run `a:blipFill`，使用原生 `stretch` 或 `tile` | 正向导出为原生能力；`stretch` 为 `Native-normalized`，`tile` 的缩放/相位可能归一化；回导暂不重建该填充 | 要求 `data-pptx-text-image-fill="stretch|tile"`、一个直接有效的 `<image>`，且 `<image>` 不带 `clip-path` / `filter` / `mask` / `transform`；见 [`svg-effects.md` §6.3](../../skills/ppt-master/references/svg-effects.md#63-gradients-and-paint-effects) |
 | 文本轮廓 | 文本上已登记 stroke | DrawingML run outline | `Native-normalized` | 轮廓承载精细视觉意义时需复核 |
 | 文本对齐 | 已登记的 `text-anchor` 与段落语义 | 段落对齐加归一化文本框位置 | `Native-normalized` | 不支持 run 级锚定与浏览器 baseline 启发式；精确放置属于 [`svg-effects.md` §6.7](../../skills/ppt-master/references/svg-effects.md#67-advanced-text-treatments) |
 | 文本框垂直对齐 | 无规范生成 SVG 控制；生成文本框使用顶部对齐 | 顶部对齐的 DrawingML text body | 导入的文本框垂直锚定可能被归一化，但主路线不公开通用创作控制 | 不得从 SVG baseline 或浏览器排版行为推断垂直对齐 |
-| 东亚竖排文字 | 没有已登记的生成 SVG 控制；`writing-mode` 为非法属性 | 主生成路线不创作 `a:bodyPr@vert` | PPTX-to-SVG 回导把 `eaVert`、`vert`、`wordArtVert` 与 `wordArtVertRtl` 归一化为正立字形逐字堆叠的 SVG 文本；源保留型原生工作流在不改所属 OOXML 时为 `Direct preservation` | 手工堆叠字形可以近似单列外观，但不会产生原生标点朝向、自动续排或多栏行为；封闭文法见 [`svg-effects.md` §6.7](../../skills/ppt-master/references/svg-effects.md#67-advanced-text-treatments) |
+| 东亚竖排文字 | 没有已登记的生成 SVG 控制；`writing-mode` 为非法属性 | 主生成路线不创作 `a:bodyPr@vert` | PPTX-to-SVG 回导把 `eaVert`、`vert`、`wordArtVert` 与 `wordArtVertRtl` 归一化为正立字形逐字堆叠的 SVG 文本；Edit Native PPTX 在不改所属 OOXML 时为 `Direct preservation` | 手工堆叠字形可以近似单列外观，但不会产生原生标点朝向、自动续排或多栏行为；封闭文法见 [`svg-effects.md` §6.7](../../skills/ppt-master/references/svg-effects.md#67-advanced-text-treatments) |
 | 字符间距 | 已登记 `letter-spacing` | DrawingML 字符间距 | `Native-normalized` | 按 [`svg-effects.md` §6.7](../../skills/ppt-master/references/svg-effects.md#67-advanced-text-treatments) 拒绝不受支持的 CSS 排版、超出 DrawingML 范围的间距，以及导致生成 run advance 或文本框 extent 非正的负字距 |
 | 项目符号段落 | 已识别的前导项目符号形式 | 原生 DrawingML bullet | `Native-normalized` | 仅提升已登记 bullet 语法 |
 | 旋转文本 | 文本对象上受支持的 transform | 旋转文本 shape | `Native-normalized` | 倾斜文本与浏览器专属 transform 不受支持 |
 | 文本阴影或发光 | 受支持 filter/effect 合同 | 一个原生外阴影或发光 | `Approximate` | 仅支持一个已登记效果图；实质效果需复核 |
-| WordArt、文本变形或沿路径文本 | 装饰文字使用已准备的图片资产，或用普通 `<text>` 作为可编辑兜底 | 图片或普通文字；不新建原生 WordArt | 源保留型原生路线为 `Direct preservation`；其他路线需要 `Bake-required` 或使用受支持载体重建 | 不登记任何生成 SVG 的 WordArt / 变形 / 路径文字属性；浏览器可渲染不代表 PowerPoint 受支持 |
+| WordArt、文本变形或沿路径文本 | 装饰文字使用已准备的图片资产，或用普通 `<text>` 作为可编辑兜底 | 图片或普通文字；不新建原生 WordArt | Edit Native PPTX 为 `Direct preservation`；其他路线需要 `Bake-required` 或使用受支持载体重建 | 不登记任何生成 SVG 的 WordArt / 变形 / 路径文字属性；浏览器可渲染不代表 PowerPoint 受支持 |
 
 ## 5. PowerPoint 图片功能
 
@@ -179,7 +179,7 @@ PowerPoint 意图
 | PowerPoint 功能 | 项目表达 | PPTX 结果 | 回导与保真度 | 校验边界 |
 |---|---|---|---|---|
 | 视觉绘制表格 | 普通 SVG shape、line 与 text | 相互独立的可编辑 PowerPoint shape | 保真度遵循各组件对应行 | 它不是原生表格，也没有 PowerPoint 表格编辑模型 |
-| PowerPoint 原生表格 | 一个带 `<metadata type="application/json">` 和可见 fallback 的 `<g data-pptx-replace-with="table">` | 启用原生 Chart/Table 替换时产生含 `a:tbl` 的 `p:graphicFrame` | 导入受支持表格重建 fallback 加替换 metadata | metadata 必须形成已登记矩形 schema；需要 `--native-charts-and-tables` |
+| PowerPoint 原生表格 | 一个带 `ppt-master.semantic-table.v2` JSON metadata 和可见 fallback 的 `<g data-pptx-replace-with="table">` | 启用原生 Chart/Table 替换时产生含 `a:tbl` 的 `p:graphicFrame` | 导入时把重复的单元格、段落和 run 格式归纳为默认值及命名单元格样式；导出时在内存中展开 | metadata 必须形成已登记矩形 schema；拒绝无版本 payload；需要 `--native-charts-and-tables` |
 | 合并表格单元格 | 规范原生表格 merge metadata | 原生水平/垂直合并语义 | 封闭 schema 内为 `Native-stable` | 拒绝重叠、歧义或非矩形合并 |
 | 表格单元格格式 | 已登记原生表格单元格格式字段 | 原生单元格 fill、border、text 与 alignment | `Native-normalized` | 不猜测封闭 schema 以外的字段；导入的非空 run 效果会阻断，而不是归一化成无效果单元格 |
 | 不受支持的原生表格功能 | SVG fallback 或直接源保留 | 保留可见 fallback，或在直接路线保留源 OOXML | 显式 fallback / `Direct preservation` | 不得临时扩展 JSON |
@@ -261,7 +261,7 @@ sidecar 工作流见[转场与动画](./animations.md)（技术规范源为 [`re
 | 视频 | 不支持作为 SVG 创作媒体对象 | 直接保留，或使用带普通受支持超链接的显式封面 | `media` 占位符不创建视频 |
 | 3D 模型 | 不支持 | 直接保留或烘焙 preview | 不将浏览器 SVG 近似当作原生 3D |
 | 宏 / VBA | 不支持 | 仅通过感知宏的直接工作流保留 | 普通生成 `.pptx` 路线不生成 VBA |
-| 任意 Office 扩展 XML | 不支持 | 由拥有该语义的原生工作流直接保留 | SVG 编译器不提供通用 OOXML 透传 |
+| 任意 Office 扩展 XML | 不支持 | Edit Native PPTX 在所属来源对象不变时直接保留 | SVG 编译器不提供通用 OOXML 透传 |
 
 ## 12. 反向映射：PPTX 到项目 SVG
 

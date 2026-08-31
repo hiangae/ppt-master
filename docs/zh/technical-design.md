@@ -40,7 +40,7 @@ PPT Master 不以“任意 SVG 都能转成 PPTX”为目标。`svg_output/` 使
 
 ## Generate PPTX 路线架构
 
-下图描述 Generate PPTX 的默认生命周期。`beautify-pptx` fidelity profile 默认使用该生命周期；同一请求明确要求快速模式时，则改用 `quick-generate`。图片还原为 PPTX 是 Generate 内另一个 fidelity profile：它当前要求 Codex 并始终直接启用 `quick-generate`，因此不进入 Default 运行时，也不需要用户另行说明“快速模式”。其他 Agent host 尚未适配该 profile，不对其行为作支持或承诺。图片还原为 PPTX 把每个规范化页面画面映射为一张幻灯片，以可见像素为表面真值，并原生还原普通文字。低清 Logo、图标、徽标或其他身份图形可由 Codex 根据参考图重建，但必须锁定身份、轮廓、比例、颜色和字标，禁止换成仅仅相似的替代物。照片和插画场景至少拆成干净背景层与人物 / 前景层。多个带 padding 包围盒且互不重叠的对象可共用一次生成 plate，再通过 grid slice 或 SVG bbox crop 拆成独立对象。整页截图 skin 始终禁止。Quick 会绕过独立规划 / 确认、首屏 gate 与预览终稿化；来源理解和资源准备仍按需运行，一次无锁最终质量门始终保留。每次只加载一份运行时流程。Create Template 有独立的工作区生命周期；Fill Native PPTX 与 Enhance Native PPTX 直接操作 OOXML。本文后续路线表会覆盖全部四条顶层路线。
+下图描述 Generate PPTX 的默认生命周期。`beautify-pptx` fidelity profile 默认使用该生命周期；同一请求明确要求快速模式时，则改用 `quick-generate`。图片还原为 PPTX 是 Generate 内另一个 fidelity profile：它当前要求 Codex 并始终直接启用 `quick-generate`，因此不进入 Default 运行时，也不需要用户另行说明“快速模式”。其他 Agent host 尚未适配该 profile，不对其行为作支持或承诺。图片还原为 PPTX 把每个规范化页面画面映射为一张幻灯片，以可见像素为表面真值，并原生还原普通文字。低清 Logo、图标、徽标或其他身份图形可由 Codex 根据参考图重建，但必须锁定身份、轮廓、比例、颜色和字标，禁止换成仅仅相似的替代物。照片和插画场景至少拆成干净背景层与人物 / 前景层。多个带 padding 包围盒且互不重叠的对象可共用一次生成 plate，再通过 grid slice 或 SVG bbox crop 拆成独立对象。整页截图 skin 始终禁止。Quick 会绕过独立规划 / 确认、首屏 gate 与预览终稿化；来源理解和资源准备仍按需运行，一次无锁最终质量门始终保留。每次只加载一份运行时流程。Create Template 有独立的工作区生命周期；Edit Native PPTX 则把既有 deck 导入保留来源的 round-trip 工作区。本文后续路线表会覆盖全部三条顶层路线。
 
 ```
 用户输入 (PDF/DOCX/XLSX/PPTX/URL/Markdown/主题文本)
@@ -59,7 +59,6 @@ PPT Master 不以“任意 SVG 都能转成 PPTX”为目标。`svg_output/` 使
 [模板候选准备（Step 3）] — 仅内部执行；不打开 UI、不等待、不选择、不读取或安装模板
     准备四类索引候选与本次提供的精确 root
     Stage 1 同时确认沟通契约与自由设计/模板使用；随后才安装所选工作区供 Stage 2 读取
-    原生 PPTX 模板请求进入 template-fill；可复用 SVG 模板需先通过 create-template 创建
     ↓
 [Strategist] 策略师 - Stage 1 沟通确认 + 最终 Stage 2 完整方案与生产机制确认 → design_spec.md + spec_lock.md
     ↓
@@ -124,9 +123,9 @@ narration 标记。
 
 凡是通过 SVG 创作或重新设计页面的工作流，`svg_output/` 都是完整的页面设计权威，但这里的 SVG 专指项目合同接受的项目规范化 SVG，而不是任意浏览器可渲染的 SVG。最终幻灯片中应出现的文字、图片、形状、图示、图表 / 表格 fallback、背景和模板派生布局元素，都必须已经存在于对应页面 SVG 中，或被它明确引用。默认流程由模板、`design_spec.md` 和 `spec_lock.md` 指导 SVG 创作；`quick-generate` 则使用当前上下文决策和 SVG 中的显式值。导出器不能把规划输入当成第二层画面来源，在导出阶段补入 SVG 缺失的页面内容。
 
-始终必读的 core 还负责兜底视觉质量与数值行距默认值。显式用户要求、模板 / 品牌和已锁定风格可以覆盖相容的美学默认；这些上层权威未规定时，层级、字体、对齐、留白、有目的的素材使用以及按密度设置的行距范围仍然生效。Default 与 Quick Generate 始终加载 `svg-effects.md`，并在完成每页前运行 §6.1 职能诊断；Visual Job Router 是诊断结果的召回入口。任何美学选择都不能覆盖技术上的 Required / Forbidden 边界。
+始终必读的 core 还负责兜底视觉质量与数值行距默认值。显式用户要求、模板 / 品牌和已锁定风格可以覆盖相容的美学默认；这些上层权威未规定时，层级、字体、对齐、留白、有目的的素材使用以及按密度设置的行距范围仍然生效。Default 与 Quick Generate 在 executor-base 路由触发时加载 `svg-effects.md`(日常效果已内置在执行核心)，并在完成每页前运行 §6.1 职能诊断；Visual Job Router 是诊断结果的召回入口。任何美学选择都不能覆盖技术上的 Required / Forbidden 边界。
 
-最小语义标记不会削弱这条闭包。自由设计、brand-only、`quick-generate` 和 `template_reuse_scope: style` 页面都采用 flat 的 Slide 本地所有权：所有已表达对象保持在 Slide，不创作 Master/Layout 身份、分层或 placeholder metadata。默认导出器根据当前配色/字体 lock 生成一个属于本项目的干净 Master 和一个 Blank Layout；无 lock 的 `quick-generate` 使用转换器默认 theme 壳。两者都不会提升任何 Slide 内容。只有 `template_reuse_scope: mirror|layout` 使用 structured 路线，每张新页面从第一版 SVG 起就声明 Master/Layout 身份。固定 Master/Layout 视觉是根节点直接原子元素；可复用内容槽位是顶层 group，带显式设计区域 bounds 和一个兼容 carrier；复合 `object` 区域走显式 proxy 降级，Layout 也允许零槽。`data-pptx-role` 只补充专用 metadata 尚未表达的少量页面框架、package 或动画行为。带旧结构语义的模板包不能原地升级，也不能作为 Step 3 的 structured 输入：先通过 `create-template` 创建新工作区；原生 PPTX 只提供包内仍然存在的事实，旧 SVG 只作为视觉参考；随后由 Generate PPTX 路线按照 AI 推导的应用计划创作新页面。flat 项目是有意不带 mapping，不算 legacy。导出器不推断、修补或迁移 Master/Layout 结构与 placeholder。
+最小语义标记不会削弱这条闭包。自由设计、仅 Brand/Style，以及 Default 的 `template_reuse_scope: style` 页面采用 flat 的 Slide 本地所有权：所有已表达对象保持在 Slide，不创作 Master/Layout 身份、分层或 placeholder metadata。Default flat 导出器根据当前配色/字体 lock 生成一个属于本项目的干净 Master 和一个 Blank Layout；Quick 的无锁 flat 导出使用转换器默认 theme 壳。两者都不会提升任何 Slide 内容。Default 的 `template_reuse_scope: mirror|layout`，以及安装了 Layout/Deck 结构所有者的 Quick，使用 structured 路线；每张新页面从第一版 SVG 起就声明 Master/Layout 身份。固定 Master/Layout 视觉是根节点直接原子元素；可复用内容槽位是顶层 group，带显式设计区域 bounds 和一个兼容 carrier；复合 `object` 区域走显式 proxy 降级，Layout 也允许零槽。`data-pptx-role` 只补充专用 metadata 尚未表达的少量页面框架、package 或动画行为。带旧结构语义的模板包不能原地升级，也不能作为 Step 3 的 structured 输入：先通过 `create-template` 创建新工作区；原生 PPTX 只提供包内仍然存在的事实，旧 SVG 只作为视觉参考；随后由 Generate PPTX 路线按照 AI 推导的应用计划创作新页面。flat 项目是有意不带 mapping，不算 legacy。导出器不推断、修补或迁移 Master/Layout 归属与 placeholder；Quick 只根据已经显式且全页完整的 SVG 合同判断使用 flat 还是 structured 打包。
 
 | 领域 | 权威来源 |
 |---|---|
@@ -134,18 +133,17 @@ narration 标记。
 | 项目规范化 SVG 的语法、兼容形式与映射边界 | 由 [`references/shared-standards.md`](../../skills/ppt-master/references/shared-standards.md) 选择的拆分权威集 |
 | Master/Layout/Slide 打包与原生对象映射 | SVG 到 PPTX 的翻译；可以重组 SVG 已表达的内容，但不能创造新的可见内容 |
 | 动画、转场、讲稿和旁白 | 各自的 sidecar / 资源与 PPTX package 后处理 |
-| 直接原生 PPTX 编辑 | 所选原生工作流自己的 PPTX / OOXML 契约 |
+| 原生 PPTX 保留式编辑 | Edit Native PPTX round-trip 工作区与保留来源的导出合同 |
 
 这是一条“页面设计闭包”规则，不代表 SVG 要描述完整 PPTX package。相关验收是：完成的页面 SVG 能重建对应幻灯片的可见设计；不要求仅凭 SVG 重建讲稿、音频、计时、relationships 或直接原生编辑结果。
 
 `svg_final/` 不改变这条边界。默认流程的 Step 7 必须从 `svg_output/` 派生视觉预览：受支持的位图 / SVG 资源会内联，EMF/WMF 为 native passthrough 保留外部引用；无法解析的普通图片会保留原引用，当前 finalizer 只统计这类处理错误，并不据此让整次处理失败。这组文件供 IDE、浏览器查看，也可由用户手动作为 SVG 图片插入 PowerPoint；它不是第二条 PPTX 导出路线，也不承担 PowerPoint 手工“转换为形状”的兼容性。需要可编辑形状时，唯一受支持的路径是项目转换器把 `svg_output/` 翻译为原生 DrawingML PPTX。
 
-已有 PPTX 请求按修改模型分流：两条原生工作流绕过 SVG，`beautify-pptx` 则仍是 Generate PPTX 内部通过 SVG 重做可见设计的 profile：
+已有 PPTX 请求按修改模型分流：Edit Native PPTX 使用保留来源的 round-trip 作者流程，`beautify-pptx` 则仍是 Generate PPTX 内部重做每个可见页面的 profile：
 
 | 工作流 | 输入角色 | 输出机制 | 为什么独立 |
 |---|---|---|---|
-| `template-fill-pptx` | 原生 PPTX 模板 deck + 新材料 | 克隆选中的幻灯片，并在 OOXML 层改写文本 / 表格 / 图表 | 保留用户的 PowerPoint 原生页面壳，而不是转成 SVG |
-| `native-enhance-pptx` | 内容与版式都应保持稳定的已完成 PPTX | 在 OOXML 层直接补讲稿、旁白、计时和转场 | 只追加原生增强，不重新设计 |
+| `edit-native-pptx` | 原生设计必须保留的既有 PPTX；新材料与交付叠加内容均为可选 | 用 `pptx_to_svg.py --roundtrip` 导入，引用未改页面，编辑选中的紧凑 SVG，再用 `svg_to_pptx.py --roundtrip` 导出 | 未改页面逐字节恢复；编辑页上的未改对象恢复为原生形态；讲稿与动效仍是叠加层 |
 | `beautify-pptx` | 页数、页序、每页措辞都必须 1:1 保留的已有 PPTX | 抽取源事实后走 SVG 流水线重新生成 native deck | 只改布局和层级，不做原地编辑 |
 
 ---
@@ -163,15 +161,15 @@ narration 标记。
 | 一张或多张图片中包含的页面画面需要变成分层可编辑幻灯片 | Generate PPTX + 图片还原为 PPTX（`image-to-pptx`）profile | 当前要求 Codex 且始终直接启用 Quick；先规范化全部页面画面，每个画面映射一张幻灯片；普通文字原生还原；低清 Logo / 图标 / 装饰只能在锁定身份、轮廓、比例、颜色和字标的前提下参考重建；chart / table / data graphic 禁止生成式重建，必须使用可核对数值的原生对象、精确源资产，或标记 `manual_required`；场景至少拆成干净背景层与人物 / 前景层；多个带 padding 包围盒且互不重叠的对象可共用一次生成 plate，再用 grid slice 或 SVG bbox crop 拆分；禁止相似替代和整页截图 skin |
 | 显式要求快速生成 | Generate PPTX + `quick-generate` profile | 按需转换 / 阅读来源、研究事实缺口并准备所需资源；用户明确提出的要求照做，其余内容、页结构、视觉与资源由当前 Agent 在上下文中决定，跳过 Strategist / 确认 / spec / lock / finalize，手写 SVG、通过一次无锁 final gate 后导出最终 PPTX |
 | PPTX 作为源材料，用户允许重构故事和页结构 | Generate PPTX，经 `ppt_to_md` + `pptx_intake` | PPTX 身份和几何是事实与候选，不是复刻约束 |
-| 原生 PPTX 模板 + 新材料 / 新主题 | Fill Native PPTX（`template-fill-pptx`） | 克隆并填充原生页面；不生成 SVG |
+| 原生 PPTX 模板 + 新材料 / 新主题 | Edit Native PPTX（`edit-native-pptx`） | 导入 round-trip 工作区；用 `page_plan.json` 选页、重排、重复或省略，只编辑计划中的页面 |
 | 现有 PPTX，页数 / 页序 / 措辞 1:1 保留，只改善排版 | Generate PPTX + `beautify-pptx` profile | 内容和分页锁定；明确要求快速时走 Quick，否则走 Default |
-| 已完成 PPTX，保持内容 / 布局稳定，只加讲稿、音频、计时、转场 | Enhance Native PPTX（`native-enhance-pptx`） | 直接 OOXML patch；不重新设计 |
+| 已完成 PPTX，保持内容 / 布局稳定，只加讲稿、音频、计时、转场 | Edit Native PPTX（`edit-native-pptx`） | 在保留来源的页面上叠加增强，不重建可见作者内容 |
 | 用户想从一个或多个 PPTX/SVG、图片/PDF、文档/网站、品牌资产、直接文字或混合参考材料包构建可复用模板工作区 | Create Template（`create-template`） | 固定入口读取每个适用证据通道，只分派一个 Create Brand、Create Style、Create Layout 或 Create Deck 子工作流，再返回作为 Generate Stage 1 候选的工作区根目录；结构型子工作流可导出审阅 PPTX |
 | Default Generate 进入规划；本次运行可能已带精确工作区 root 或 Create Template handoff | Generate PPTX Stage 1 | Step 3 只准备候选；Stage 1 同时确认沟通与自由设计/模板使用；普通请求默认自由设计，明确模板意图或任意 root 默认模板模式，且只有单 root 会预选；随后才安装供 Stage 2 读取 |
 | 用户要求调整对象级动画顺序 / 效果 / 计时 | Generate PPTX + `customize-animations` 阶段 | 通过 `animations.json` 控制可选导出策略 |
 | 用户要求预览、选择、注解或重导出浏览器编辑 | Generate PPTX + `live-preview` 阶段 | 注解只在规定交接点应用 |
 
-“优化这份 PPT”这类含糊请求归约为一个判定点：是否保留原始页数、页序和逐页措辞。两者都属于 Generate PPTX；保留时选择 `beautify-pptx` profile，允许重构时使用普通 profile。两种情况下都只在明确要求快速时选择 Quick，否则使用 Default。
+“优化这份 PPT”这类含糊请求先归约为一个判定点：通过 Generate 重做可见页面，还是通过 Edit Native PPTX 保留并编辑原生 deck。进入 Generate 后，保留页数、页序和逐页措辞时选择 `beautify-pptx` profile，重建故事时使用普通 profile；只有明确要求快速时才选择 Quick，否则使用 Default。
 
 ---
 
@@ -228,11 +226,10 @@ Quick Generate：
                                         + validation/<output_stem>.report.json
                                         + backup/<ts>/svg_output/ [默认输出路径]
 
-直接 OOXML 路由：
-analysis/<stem>.slide_library.json + 源 PPTX + fill_plan.json
-    └─> template_fill_pptx.py -> exports/*.pptx
-源 PPTX 项目归档副本 + 增强计划 + 讲稿/音频/计时资产
-    └─> native_enhance_pptx.py -> exports/*.pptx
+Edit Native PPTX：
+源 PPTX
+    └─> pptx_to_svg.py --roundtrip -> authoring-svg-flat/ [+ page_plan.json]
+          └─> svg_to_pptx.py --roundtrip -> exports/*.pptx
 ```
 
 关键切分是：`svg_output/` 是作者状态，`svg_final/` 是派生视觉预览，`exports/` 和 `backup/` 是派生的交付或归档状态。模糊这条线，会让校验、重导出和人工修复都更难推理。
@@ -283,7 +280,7 @@ SVG 也是唯一同时满足流程中所有角色需要的格式：**AI 能可�
 | 内容契约 | `sources/` 内容型文件（以 `<stem>.md` 为主） | `source_to_md/*` 转换器 + `import-sources` | 文本、表格、图表数值、SmartArt 节点文字、引用和源材料叙事 |
 | 结构化分析 | `analysis/*.json` / `analysis/*.csv` | intake 与分析工具 | PPTX 身份信息、页面几何、原生表格/图表、SmartArt 关系，以及图片尺寸、比例、引用次数、媒体类型与渲染能力等可测量事实 |
 
-对 PPTX 源文件，`project_manager.py import-sources` 先按所有权边界把原件 move/copy 到项目 `sources/`，再以归档后的路径运行 `pptx_intake.py`；只有没有同 stem 的显式或既有规范 Markdown 时，才在最后调用 `ppt_to_md.py`。因此正常首次导入会得到两条事实通道，但去重路径可跳过重复 Markdown 转换，intake 失败也会记录为导入 note，而不是伪造分析产物。Markdown 仍然是主生成流水线的内容源；成功的 intake bundle 会写出 `<stem>.identity.json`、`<stem>.slide_library.json`，并把紧凑的多 deck 索引合并到 `analysis/source_profile.json`。Strategist 默认读取这个紧凑索引来获取源事实；只有特定工作流需要原始细节时，才打开单个 deck 的原始 artifact。这个边界很重要：主流水线可以重构页数和叙事，而 `template-fill` 与 `beautify` 会把同一批 intake 事实中的一部分提升为更强约束。
+对 PPTX 源文件，`project_manager.py import-sources` 先按所有权边界把原件 move/copy 到项目 `sources/`，再以归档后的路径运行 `pptx_intake.py`；只有没有同 stem 的显式或既有规范 Markdown 时，才在最后调用 `ppt_to_md.py`。因此正常首次导入会得到两条事实通道，但去重路径可跳过重复 Markdown 转换，intake 失败也会记录为导入 note，而不是伪造分析产物。Markdown 仍然是主生成流水线的内容源；成功的 intake bundle 会写出 `<stem>.identity.json`、`<stem>.slide_library.json`，并把紧凑的多 deck 索引合并到 `analysis/source_profile.json`。Strategist 默认读取这个紧凑索引来获取源事实；只有特定工作流需要原始细节时，才打开单个 deck 的原始 artifact。这个边界很重要：主流水线可以重构页数和叙事，而 `beautify` 会把同一批 intake 事实中的一部分提升为更强约束。
 
 转换器生成的图片资产也会被归一化。伴随的 `<stem>_files/` 目录会导入项目级 `images/` 池，`image_manifest.json` 按文件名合并；当导入后目录名发生变化时，Markdown 中的资源引用会被重写。Office 矢量图（`.emf` / `.wmf`）是一等运行时资产：intake 阶段不栅格化它们，`finalize_svg.py` 为 native 路径保留外部引用，`svg_to_pptx.py` 以 Office 矢量媒体嵌入，避免 CJK 字体替换和矢量细节损失。
 
@@ -315,7 +312,7 @@ profile 省略规划产物与 `svg_final/`，但项目中仍可按需存在已�
 | `sources/` | 原件归档、归一化 Markdown、转换器伴随文件 |
 | `analysis/` | 机器抽取事实：PPTX intake bundle 与按需重算的图片分析 |
 | `images/` | 单一运行时图片池：用户图、抽取图、网络图、AI 图、切片图、EMF/WMF |
-| `icons/` | 由 `icon_sync.py` 复制的项目级图标集；导出时的全局库回退仅用于 legacy compatibility |
+| `icons/` | 由 `icon_sync.py` 复制或由当前工作区提供的项目级图标集；预览、校验、后处理与导出只解析此根目录下完整的 `library/name` 引用 |
 | `templates/` | 复制进项目的模板 spec / SVG reference / 非图片模板资产 |
 | `svg_output/` | 唯一手写 SVG 源目录 |
 | `svg_final/` | 强制派生的视觉预览 SVG；尝试内联受支持位图 / SVG，保留 EMF/WMF 外链例外；服务 IDE / 浏览器，也可手动作为 SVG 图片插入 PowerPoint |
@@ -346,7 +343,7 @@ CLI 支持 `--move`、`--copy` 和自动默认，但共享同一条固定的所�
 | `svg_final/` 是默认流程派生产物 | 它必须能从 `svg_output/` 重建，只负责视觉预览；受支持资源尽量内联，EMF/WMF 保留外链例外，不应成为 native 导出的事实源；`quick-generate` 跳过它 |
 | native PPTX 标准导出读取 `svg_output/` | 唯一受支持的可编辑形状路线由项目转换器执行；它要在 finalize 重写前保留图标、`preserveAspectRatio`、圆角矩形和原生图片裁剪语义 |
 | PowerPoint 手工“转换为形状”不属于兼容性契约 | `svg_final/` 可以作为 SVG 图片插入，但转换后的结构与视觉结果不做保证，也不反向约束 SVG 允许能力 |
-| 直接 OOXML 路由不进入 SVG 流水线 | 保留型工作流直接 patch 原生 PPTX parts |
+| Edit Native PPTX 不进入 Generate SVG 流水线 | round-trip 工作区使用来源支持的 `authoring-svg-flat/` 页面与保留来源的导出器，而不是生成一份新 deck |
 | 图片事实来自重算元数据 | `analysis/image_analysis.csv` 从实时 `images/` 目录重算；默认流程由 Strategist 先用源文上下文，只在图片语义或安全放置仍无法确定时查看那一张具体图片；`quick-generate` 由当前 Agent 在备料时采用同样的有界分析，SVG 创作阶段不重新扫描源图像素 |
 | 原生 PPTX 模板不是 Step 3 候选 | Step 3 只接受精确的可复用模板工作区 root 作为候选输入 |
 
@@ -366,7 +363,7 @@ PPT Master 不只服务 PPT——同一套 SVG → DrawingML 流水线还能产�
 
 **为什么保留自由设计选项。** 模板是地板，但很容易变成天花板：它会把整个 deck 锁进模板自有的视觉惯用语，无视内容本身想要怎样被呈现。自由设计的布局从源内容的结构推导而来，而不是从一套固定语法套上去——视觉节奏跟着内容走，而不是跟内容打架。约束模式在窄场景里确实更好（品牌锁定的 deck、强类型场景如学术答辩或政府报告），最终选择仍由用户完成。
 
-**精确选择，不做语义匹配。** 像 `presentation_core` 这样的裸名字、品牌提及，或“麦肯锡风格”这类风格短语，永远不会 fuzzy-match 到目录。默认页面只从四个 `*_index.json` 列出已注册 Brand/Style/Layout/Deck；聊天发现也读取同一组索引并返回精确 root。显式路径仍有效；若它与某个已注册 canonical root 精确相同，可显示为 `library`，未注册 root 仍是 `explicit`。Library 工作区解析 `templates/design_spec.md`，project root 解析全部 `templates/design_spec.<kind>.<id>.md`；服务端解析每个 explicit root 的真实 kind 集合，来源标签本身不参与优先级。自由文字风格说明仍只是 Stage 2 输入，不会启用 Style 工作区。旧平铺 Brand/Layout/Deck 目录只有在满足当前 kind 合同时，才兼容从根目录读取 `design_spec.md`；Layout/Deck 还必须满足当前 structured SVG 合同。Style 不存在旧平铺形态。目录形态从不授权结构迁移；带旧 Master/Layout/placeholder 语义的包必须先替换为新建的模板工作区。
+**精确选择，不做语义匹配。** 像 `presentation_core` 这样的裸名字、品牌提及，或“麦肯锡风格”这类风格短语，永远不会 fuzzy-match 到目录。默认页面只从四个 `*_index.json` 列出已注册 Brand/Style/Layout/Deck；聊天发现也读取同一组索引并返回精确 root。显式路径仍有效；若它与某个已注册 canonical root 精确相同，可显示为 `library`，未注册 root 仍是 `explicit`。Library 工作区解析 `templates/design_spec.md`，project root 解析全部 `templates/design_spec.<kind>.<id>.md`；服务端解析每个 explicit root 的真实 kind 集合，来源标签本身不参与优先级。自由文字风格说明仍只是 Stage 2 输入，不会启用 Style 工作区。根目录平铺的包不属于模板工作区；目录形态从不授权结构迁移。带旧 Master/Layout/placeholder 语义的包必须先替换为新建的模板工作区。
 
 当前 Brand/Style/Layout/Deck 都采用同一工作区路由合同；Brand 与 Style 不含 SVG roster，空的可选目录直接省略：
 
@@ -391,7 +388,9 @@ Strategist 及后续角色只读该项目本地副本。Project root 可直接�
 复用；把其中一项迁入 library 时保留 spec schema 与素材，但要把限定名改为
 单 kind 库路径下的裸 spec，再由全局索引注册决定它是否作为 library 选项出现。
 
-对 Create Layout / Create Deck，`standard` 与 `fidelity` 会重新创作 SVG 和新的 Master/Layout/slot 系统；来源拓扑只作为视觉证据，不保留、也不蒸馏。`mirror` 把来源包内实际存在且已验证的页序、Master/Layout 身份与父子关系、placeholder 事实和受支持视觉物化到新工作区，不做语义归纳或缺口补造。只有被保留的来源本身已经品牌中立且应用中立时，Layout mirror 才合法；否则应重新创作 Layout，或把这些事实保留为 Deck。由于结构层不能是 `<g>`，固定结构层的来源 group wrapper 只允许机械展开成直接原子，同时保持归属、paint order 和视觉一致。Create Brand 只提取身份片段，Create Style 只提取可移植方法/方向；两者都不进入结构复制策略，也不生成 SVG roster。
+对 Create Layout / Create Deck，`standard` 与 `fidelity` 会先把完整来源 Master/Layout 清单作为结构与视觉证据，再创作完整 Slide SVG 原型和新的 Master/Layout/slot 系统。`standard` 保持紧凑，`fidelity` 覆盖更广的有用来源对齐家族；每个被保留的创作型 Layout 至少由一个 Slide 原型表达。`mirror` 只输出来源 Slide 原型，并保留每张 Slide 可达的 Layout/Master 链；每个独立 SVG 会补齐 Master + Layout + Slide 上下文，同时保留显式归属标记。未被任何 Slide 引用的来源结构只作为证据。只有被保留的来源已经品牌中立且应用中立时，Layout mirror 才合法；否则应重新创作 Layout，或把这些事实保留为 Deck。固定结构层的来源 group 只允许机械展开成直接原子，同时保持归属、paint order 和视觉一致。Create Brand 只提取身份片段，Create Style 只提取可移植方法/方向；两者都不进入结构复制策略，也不生成 SVG roster。
+
+“只生成 Slide”是 SVG roster 边界，不代表禁止确定性辅助数据。PPTX 来源的 mirror 可携带逐 Master 的来源 Theme 与原生载荷 sidecar；工具会校验并消费它们，但不会把它们暴露为原型或页面创作上下文。
 
 四类模板拥有不同的设计契约片段：
 
@@ -406,7 +405,7 @@ Theme、Slide Master、Slide Layout 与 Placeholder 是编译生成的 PowerPoin
 
 当用户选择多个 root 时，每个不同 root 只安装一次，且每份贡献保持独立 spec。完整集合中每个 kind 最多一份，四种 kind 均可共存，多 kind project root 必须原子选择。随后按**片段级**而不是字段级解析所有权：Brand 拥有身份，Style 拥有方向/方法默认值；有 Layout 时由 Layout 拥有结构，否则由 Deck 拥有结构；Deck 始终保留描述性的可复用应用语境，以及未被 Brand 覆盖的身份。项目中只安装当前有效的 Layout 或 Deck 结构 roster。library/explicit 来源不改变这个顺序。当前项目应用契约只来自已确认的 Stage 1，Deck 语境只是 Stage 2 对照输入，不会覆盖它。用户最终确认最高。Style 的色彩/字体 fallback 不覆盖 Brand/Deck 身份，其方法与构图预期必须兼容所选结构。项目内 Brand + Layout 组合的应用语境来自 Stage 1，不会自动升级成可注册的 Deck。同 kind 重复会在安装前被拒绝。这样已装集合能明确说明每个片段来自哪里，便于审计和复现。
 
-**原生 PPTX 不能直接作为 Step 3 工作区。** 普通 Generate 可以把 PPTX 作为源材料使用，`beautify-pptx` 也可以在页数、页序和逐页措辞 1:1 的边界下重新设计；这两种情况都不会把原始 PPTX 当作 Step 3 模板。把原生 PPTX 作为模板或页面壳、再用新材料填充时，默认进入 Fill Native PPTX；若请求允许拆分、合并、删页、重排或叙事重构，则仍属于 Generate。只有当目标是创建可复用模板工作区、并在 SVG 路线的 Step 3 中重复使用其设计系统时，才先运行 Create Template，再传入生成的工作区根目录。
+**原生 PPTX 不能直接作为 Step 3 工作区。** 普通 Generate 可以把 PPTX 作为源材料使用，`beautify-pptx` 也可以在页数、页序和逐页措辞 1:1 的边界下重新设计；这两种情况都不会把原始 PPTX 当作 Step 3 模板。把原生 PPTX 作为模板或页面壳，或在不重设计的前提下选择、重排、重复或省略既有页面时，默认进入 Edit Native PPTX；需要拆页、合页、重写大纲或重设计时，仍属于 Generate。只有当目标是创建可复用模板工作区、并在 SVG 路线的 Step 3 中重复使用其设计系统时，才先运行 Create Template，再传入生成的工作区根目录。
 
 **模板合同是 opt-in，catalog 参考和图标不是。** 这种不对称是有意的：Layout 锁定可复用结构，Style 锁定方向/方法默认值，Brand 锁定身份，Deck 则把重复应用与身份、结构组合起来；页面级 Chart/Table 参考和图标只是不会单独施加 deck 级合同的复用原语。定性 Structure 则由 Executor 根据当前页关系现场生成，没有 catalog SVG 或 key。Chart/Table catalog 与可复用工作区同在 `templates/` 树下，但 ownership 仍是 page-local。
 
@@ -424,7 +423,7 @@ PPT Master 把拥有 deck 状态的 Strategist、Image_Generator 和 Executor �
 Stage-1 沟通推荐的编写不得读取这些候选或任何模板内容。UI 在同一次提交中
 确认沟通契约与可切换的自由设计/使用模板选择；只有确认后，Agent 才把非自由设计选择安装成彼此独立的项目本地 `spec`。Strategist 采用一个按依赖排序的两阶段 gate。`delivery_context` 在同一个开放文本字段中区分演讲者主导、读者主导、混合、录制/自动播放，明确主要场景并记录可选的次要用途；混合场景不能只写“混合”而不说明由哪一种主导。其中的文本框仍承载可编辑推荐，且没有任何一项要求非空：确认时按当前文本原样保存，清空后的值保持为空，不会回退到推荐内容。最终 Stage 2 只从该契约计算一次，同时确认完整 PPT 方案与生产机制：阅读模式、叙事 mode、页数、成套视觉系统、图片来源、生成图渲染、条件式 AI 图片获取路径、生成模式、Design Spec 审核开关，以及 Agent 是否主动生成讲稿、自定义动画和旁白音频。公式处理不是用户选择的生产策略：结构性数学内容在创作时直接成为原生公式 marker。仅在 Stage 1 确认后，存在已安装模板时，Strategist 才读取项目本地工作区和当前内容，推导**如何应用**并以可编辑的 `template_application` 自然语言展示；Stage 2 不会重新选模板，内部复用/遵循模式保持隐藏。阅读模式决定信息由页面、视觉、讲者和备注如何共同承担，其选项卡不展示 px 数值。浏览器可以在本地执行确定性的「阅读模式 → 正文基准 → 未锁定角色字号」联动；手动编辑字号即锁定可见值，不会重新计算 Stage 2。三个主动执行值是用户未明确要求时的兜底策略，不是能力禁用开关；优先级固定为「用户最新明确指令 → 最终 Stage 2 → `true / false / false` 默认值」。Strategist 仍可按内容给出非绑定的 Motion suggestion，建议本身不会启动自定义动画执行。生成图直接继承已选 PPT 色彩锚点，不再单设图片调色选择。最终状态有两个等价载体：默认 UI 路径在最终等待返回后只读取一次 `confirm_ui/result.json`；显式 chat-only 或委托路径保留等价的最终确认摘要，并可不产生 `result.json`。两条路径都会先解析并把生产流程的最终有效结果固化到同一份 `design_spec.md`，再完成 Gate 1 fidelity。未开启 refine 时立即进入 lock 编写；`refine_spec: true` 时，流程会在 `spec_lock.md` 之前暂停，用户可以通过正常聊天任意修改这同一份 Design Spec、迭代任意轮次，明确批准后才释放 Gate 2 并编写 lock。流程不会维护第二份 Design Spec 或并行 lock。正常的 lock 编写与下游执行不再回读确认通道。必需人工素材未就绪仍可能引入条件式阻塞点，因此这里不是对所有 runtime gate 的排他声明。项目校验要求 `spec_lock.md ## communication` 下存在紧凑的 `audience` / `objective` / `core_message` 锚点，并要求 §IX 每个 Slide block 都有 `Audience move`。
 
-三套成套方向仍把 mode、visual style 与生成图 rendering 投影为可编辑的 `custom`。每套方向都是在已确认契约内自顶向下完成的一套完整设计，而不是自下而上从目录里拼选出来的；给三套是为了不让单一推荐把用户锁死，固定 preset 目录始终是供用户手动选择的下层。其 custom 投影不受“与 preset 是什么关系”的约束，可以原样承接一个 preset。`custom` 与 preset 目录没有固定关系，一个最合适的 preset 也可以原样成为完整基础。三套方案在整份 deck 的层面本身就显著不同：先定下三个大方案，再补全各自细节，最后才映射到 mode、visual style、rendering、色彩、字体和图标等具体选项。差异存在于方案本身，而不是由某个指定字段来证明——由该方案设计真正需要的组件承担，任何组件都可以承担，也任何组件都允许一致。仅换名称、note 或参考数量不构成差异；所有组件都完全相同的三项也不成其为三套方案。当用户或模板的真值锁定了部分组件时，由其余开放组件承担差异；只有在没有任何开放组件时投影才可以完全相同，并须如实说明边界而不是强行制造差异。三套成套方案全部完成后，Strategist 才按已确认契约与来源比较整体适配度，把首选方案的实际零基索引写入 `design_directions.selected`；数组顺序不表示偏好。选择参考前只读取 mode、visual style 与 rendering 的三个目录索引；各方向的基础冻结后，只读取去重后的已选细节文件并完成 `custom` 行为。图片来源是独立判断，所以即使最初不推荐 AI 图片，每套方向也已包含 `rendering` 候选。首选方向卡片会被标记并在初始时应用；点击未激活的方向卡片会应用其不可变的整套方案，选中的 `custom` 投影卡片随后可原位编辑，下层控件也可彼此分离。已调整的活动卡片提供显式恢复操作，最终状态只保存编辑后的当前组件值，不把方向 `id` 当作执行权威。
+三套成套方向仍把 mode、visual style 与生成图 rendering 投影为可编辑的 `custom`。每套方向都是在已确认契约内自顶向下完成的一套完整设计，而不是自下而上从目录里拼选出来的；给三套是为了不让单一推荐把用户锁死，固定 preset 目录始终是供用户手动选择的下层。其 custom 投影不受“与 preset 是什么关系”的约束，可以原样承接一个 preset。`custom` 与 preset 目录没有固定关系，一个最合适的 preset 也可以原样成为完整基础。三套方案在整份 deck 的层面本身就显著不同：先定下三个大方案，再补全各自细节，最后才映射到 mode、visual style、rendering、色彩、字体和图标等具体选项。差异存在于方案本身，而不是由某个指定字段来证明——由该方案设计真正需要的组件承担，任何组件都可以承担，也任何组件都允许一致。仅换名称、note 或参考数量不构成差异；所有组件都完全相同的三项也不成其为三套方案。当用户或模板的真值锁定了部分组件时，由其余开放组件承担差异；只有在没有任何开放组件时投影才可以完全相同，并须如实说明边界而不是强行制造差异。三套成套方案全部完成后，自由设计按已确认契约与来源比较整体适配度，把最优者的零基索引写入 `design_directions.selected`。已安装模板时，三套方案都遵守同一套解析后的模板上下文；`selected` 指向其中最充分表达该模板的可行方案，另外两套只在开放维度上变化，不得通过弱化模板使用或拆分其片段来制造差异。数组顺序不表示偏好。选择参考前只读取 mode、visual style 与 rendering 的三个目录索引；各方向的基础冻结后，只读取去重后的已选细节文件并完成 `custom` 行为。图片来源是独立判断，所以即使最初不推荐 AI 图片，每套方向也已包含 `rendering` 候选。首选方向卡片会被标记并在初始时应用；点击未激活的方向卡片会应用其不可变的整套方案，选中的 `custom` 投影卡片随后可原位编辑，下层控件也可彼此分离。已调整的活动卡片提供显式恢复操作，最终状态只保存编辑后的当前组件值，不把方向 `id` 当作执行权威。
 
 最终 Stage 2 确认的三个主动执行值始终保留为相互独立的原始证据。
 尤其是，启用旁白可以在 Design Spec 中启用 Speaker Notes 的最终有效结果，
@@ -455,8 +454,8 @@ OMML 词汇执行更窄的反向过程，生成带可见 SVG 预览的规范块�
 绝对外部 URI 会成为 external hyperlink relationship；精确的 1-based
 `#slide-N` 会成为内部 Slide relationship，并写入
 `ppaction://hlinksldjump`。PPTX 回导器会把受支持的形状点击与文字 run 点击重建
-为同一种 anchor。Fill Native 只在输出目标唯一时重映射内部跳转；Enhance
-Native 则不改既有 hyperlink XML 与 relationship。鼠标悬停、custom show、
+为同一种 anchor。Edit Native PPTX 对未改页面不动既有 hyperlink XML 与
+relationship；带页计划时只在输出目标唯一时重映射内部跳转。鼠标悬停、custom show、
 导航命令、程序 / macro / OLE / file 以及任意 action setting 仍在合同外。
 唯一的 source-only transport 例外用于同一 PowerPoint shape 同时具有整体 click
 与内部 run link 的情况：PPTX→SVG 在逻辑 group 上写
@@ -473,7 +472,7 @@ Generate 路由会在加载流程前选定一份运行时权威：[`workflows/ge
 
 全路由通用的停止 / 继续规则以 [`failure-recovery.md`](../../skills/ppt-master/workflows/governance/failure-recovery.md) 为准；其中具体故障矩阵与续跑入口目前覆盖 Generate PPTX。本节不复制这些规则。
 
-其中三条边界尤其关键。第一，页面 SVG 必须由当前主代理逐页手写；禁止写 Python / Node / shell 生成器批量吐 SVG，因为这种输出会丢失跨页判断和视觉连续性。第二，默认流程节奏是 `P01 → first-page gate → 不间断生成其余页面 → final gate`。P01 是方法样本：执行者先输出 `gate-signal`，再把已解决的方法规则带入后续页面；P02 到末页之间不分批，也不插入 checker。`quick-generate` 仍串行手写并以 P01 为视觉锚点，跳过首屏 gate，并在完整 roster 生成后运行一次无锁 final gate。第三，路由是确定性的：原生 PPTX 模板、beautify、native enhancement、自定义动画、live preview 等触发条件已经在仓库里定义清楚时，不再额外抛给用户一个开放式路线选择题。
+其中三条边界尤其关键。第一，页面 SVG 必须由当前主代理逐页手写；禁止写 Python / Node / shell 生成器批量吐 SVG，因为这种输出会丢失跨页判断和视觉连续性。第二，默认流程节奏是 `P01 → first-page gate → 不间断生成其余页面 → final gate`。P01 是方法样本：执行者先输出 `gate-signal`，再把已解决的方法规则带入后续页面；P02 到末页之间不分批，也不插入 checker。`quick-generate` 仍串行手写并以 P01 为视觉锚点，跳过首屏 gate，并在完整 roster 生成后运行一次无锁 final gate。第三，路由是确定性的：原生 PPTX 模板、beautify、Edit Native PPTX、自定义动画、live preview 等触发条件已经在仓库里定义清楚时，不再额外抛给用户一个开放式路线选择题。
 
 默认流程的角色切换协议（切换模式前必须 `read_file references/<role>.md`）有两个互相支撑的作用：把新鲜的角色指令载入上下文，覆盖前一模式的漂移；对话 transcript 中的可见标记构成审计轨迹，让用户能看到 agent 何时切换了模式——回看一个具体决策为什么这样做时，这条线索很关键。
 
@@ -669,15 +668,9 @@ SVG 与 DrawingML 的表达模型并不等价，因此主编译路径不把“�
 
 ---
 
-## 直接 OOXML 路由
+## 原生 PPTX 编辑
 
-不是所有 PPTX 相关请求都应该重新生成页面。PPT Master 现在为“原生 deck 本身就是编辑对象”的场景提供直接 OOXML 路由。
-
-`template_fill_pptx.py` 是 `scripts/template_fill_pptx/` 包的薄 CLI 入口。analyzer 抽取带文本槽位、表格、图表和几何信息的 slide library；fill plan 选择源页面并确认替换内容；applier 克隆幻灯片并直接 patch XML parts。这条路线故意绕开 SVG：用户提供 PowerPoint 模板时，通常期望原生母版、占位符、表格和图表继续保持 PowerPoint-native。
-
-`native_enhance_pptx.py` 是已完成 deck 原生增强的稳定入口。它委托 `native_enhance_pptx_core.py`，在项目归档副本上直接 patch PPTX package：讲稿、全局或按页转场、录制旁白媒体、页面计时和相关元数据。intake 会记录来源 hash 与有序 slide-part roster；validate/apply 会拒绝来源漂移或缺少已请求素材。只读 delivery check 会在 intake/preflight 盘点包完整性、字体、媒体、隐藏页、体积与已有 motion，并在原子发布前审计候选文件。旧名称 `native_narration_pptx.py` 仅保留为精简的 CLI 兼容包装器。它的契约是保留：已有内容、布局和格式不重新生成。
-
-这些直接路线会和主流水线共享部分分析原语，但复用深度不同：Template Fill 消费标准 PPTX intake 的 slide library；Native Enhance 用 `ppt_to_md.py` 理解内容，从归档 package 生成自己的轻量 `slide_index.json`，并把机器 delivery report 放在 `validation/`。两者都不共享 SVG 作者阶段和后处理阶段。这个分离是有意的：SVG 生成是设计合成路径；直接 OOXML 编辑是保留路径。
+不是所有 PPTX 相关请求都应该重做每个页面。Edit Native PPTX 是当前保留路线：它用 `pptx_to_svg.py --roundtrip` 导入来源 deck，逐字节引用未改页面，只编辑计划中的紧凑 SVG，再通过 `svg_to_pptx.py --roundtrip` 导出。`page_plan.json` 可选择、重排、重复或省略页面；讲稿、旁白、计时和转场都作为保留页面上的叠加层。
 
 ---
 
@@ -687,7 +680,13 @@ SVG 与 DrawingML 的表达模型并不等价，因此主编译路径不把“�
 
 **为什么是逐元素派发而不是整体翻译。** SVG 的层级模型干净地映射到 DrawingML 的 group / shape / picture 类型——不需要一个全局优化器去重新规划幻灯片。每种形状都有自己窄的翻译器，简单到能单独调试和单元测试。一张幻灯片的最终质量等于这些独立局部转换之和；这个性质在整体翻译下脆弱，在元素派发下稳健。
 
-**为什么导入型与生成型 metadata 分层。** 导入 PPTX 时，完整 SVG 可以携带高级形状所需的 metadata、隐藏 carrier 和预览指纹，因此作为原生载荷后备留在临时分析工作区且保持不可变。`svg_authoring_view.py` 生成模板创建所用的可编辑 IR：轻量 SVG 通过文档内 source ref 标识对象，`authoring_manifest.json` 只记录路径与初始 hash，不重复保存原始载荷。`standard` / `fidelity` 创作项目规范化 SVG，只有精确匹配已登记 preset 时才使用 compact authored-preset 组。Mirror 从 IR 物化通过校验的模板，只为未改且 hash 匹配的 Slide-local/slot ref 重新接入转换器已支持的 metadata；固定结构层保持直接原子，不支持或已修改的对象保留当前 SVG fallback，IR 专用 ref 不进入最终模板 SVG。
+**为什么导入型与生成型 metadata 分层。** 导入 PPTX 时，完整 SVG 可以携带高级形状所需的 metadata、隐藏 carrier 和预览指纹，因此作为不可变来源/包证据与非可见载荷后备留在临时分析工作区。`svg_authoring_view.py` 生成模板创建所用的新紧凑可编辑 SVG：文档内 source ref 标识对象，`authoring_manifest.json` 只记录路径与初始 hash。`standard` / `fidelity` 创作项目规范化 SVG；Mirror 也实际审阅/创作这份紧凑 SVG，并保留结构事实、语义和相似展示。materializer 只校验、合成并发布当前作者树，绝不因 hash 未变而回填 lossless 可见子树；IR 专用 ref 不进入最终模板。
+
+**为什么 PPTX 往返使用语义工作区，而不是照搬 ZIP 目录。** 可编辑页面源是 `authoring-svg-flat/`；PowerPoint 图片媒体、导入的可复用矢量、提示音、音频、视频、备注和不透明载荷分别位于 `images/`、`icons/imported/`、`sounds/`、`audio/`、`video/`、`notes/` 和 `native-payloads/`。精确来源包保存在 `sources/source.pptx`，结构与归属契约保存在 `analysis/`，诊断保存在 `validation/`，发布文件保存在 `exports/`。这样既让作者路径与普通项目一致，又由 `analysis/roundtrip_manifest.json` 把语义文件映射回 package 归属。导入与导出只接受这一份契约；根目录下的 `source_template.pptx`、`native_structure.json`、`conversion-report.json` 与 `assets/` 都不是兼容输入。
+
+**为什么紧凑 SVG 可以展开为丰富 PPTX。** 无论直接生成还是从 PPTX 导入，第一次发布的作者源就必须是规范化紧凑 SVG：使用标准 SVG 元素、可读分组和语义 metadata，根节点只保存字体类默认值，颜色与线型放在语义组中。源码不使用 CSS class、私有缩写、编码载荷或有损精度裁剪，质量检查只读验证而不回写。导出时，编译器在内存中解析继承，并把语义表格、原生形状及其他受支持对象展开为 PowerPoint 需要的重复 DrawingML；冗余只存在于最终经 ZIP 压缩的编译产物中。
+
+受支持的导入原生表格保持为一个语义 marker，而不是在模型可见 SVG 中展开成数千个节点。其 `ppt-master.semantic-table.v2` payload 会把重复格式归纳成默认值及命名样式，原生导出时再展开。导入对象带 `data-pptx-native-authority="json"`：内嵌 JSON 是权威，紧凑浏览器 preview 可以近似。封闭 schema 以外但承载含义的组合继续以内联可读 SVG 表达并报告转换缺口。只有不含文字、没有语义 marker、schema 也无法识别的来源装饰，才允许在 `authoring-svg-flat/` 中成为紧凑 `native-restore` 代理；该往返代理仍遵守自己的不可编辑保留合同。
 
 **为什么只有一条 PPTX 编译路线。** Native 导出把作者 SVG 中受支持的元素逐个翻译成 DrawingML 形状。常规 deck 路线读取 `svg_output/`；用户需要时，create-template 对通过校验的模板原型调用同一 structured 编译器，生成 `exports/<id>_template_preview.pptx` 作为审阅证据。项目不会把整页 SVG 媒体或另一套位图渲染打包成第二类 PPTX。`svg_final/` 仍由常规 deck 的强制后处理生成，但只承担派生视觉预览和 SVG 图片插入，不为 PowerPoint 手工“转换为形状”提供兼容兜底。
 
@@ -699,23 +698,23 @@ SVG 与 DrawingML 的表达模型并不等价，因此主编译路径不把“�
 
 **为什么可复用 bounds 是设计区域，不是量出来的文本框。** bounds 来自安全区、分栏、面板内框或图片框，而不是字形宽度、行数或当前内容紧包围盒。当前 Slide 保留自己的 carrier 几何，因此只要语义构图相同，4:6、3:7、5:5 的实例都可复用同一 Layout。文本长度不会意外拆分或改变可复用合同。
 
-**为什么内部应用计划保留两个字段。** Strategist 推导 `template_reuse_scope`，记录字面镜像复用、结构化版式复用或 flat 风格参考；structured 计划再推导 `template_adherence: strict|adaptive`。`page_layouts` 记录完整创作原型，`pptx_masters` / `pptx_layouts` 记录唯一可复用定义，`page_pptx_layouts` 记录页面分配。strict 保持声明的原型合同；adaptive 保持原型 Master，只有固定 Layout 原子或槽位 topology/bounds 改变时，Strategist 才可声明新 Layout。若制作过程暴露出这一需求，执行必须退回上游，待 Strategist 更新、回读并校验定义与分配后才能继续；导出器不会事后推断。这些是导出器内部值，不是用户确认选项。模板定义即使暂时没有页面使用，也能注册进最终文件。layout 的皮肤由项目控制；mirror 还要保持字面视觉与文字节点拓扑。`style` 不带 adherence 或结构 mapping。
+**为什么内部应用计划保留两个字段。** Strategist 推导 `template_reuse_scope`，记录字面镜像复用、结构化版式复用或 flat 风格参考；structured 计划再推导 `template_adherence: strict|adaptive`。`page_layouts` 记录完整创作原型，`pptx_masters` / `pptx_layouts` 记录唯一可复用定义，`page_pptx_layouts` 记录页面分配。strict 保持声明的原型合同；adaptive 保持原型 Master，只有固定 Layout 原子或槽位 topology/bounds 改变时，Strategist 才可声明新 Layout。若制作过程暴露出这一需求，执行必须退回上游修复。layout 的皮肤由项目控制；mirror 保持已创作原型的结构和相似展示，JSON-first Chart/Table 的派生 preview 子树无需字面同构。`style` 不带 adherence 或结构 mapping。
 
-**为什么显式版式把文字默认值分在 Master 与 Layout 两层。** Flat 与 structured 导出都会把声明的 `title` 锚点和确定性的九级 body 层级写入 Master 文本默认值，同时保留原有缩进与项目符号设置；在 structured 路线上，每个 Layout 文字槽位还会把 carrier 首个 run 的字号写入一级默认值，同时保留提示文字的直接字号。这样，插入或重置 placeholder 时仍能继承 Layout 特定尺度，而生成 Slide 上的直接 run 不变。
+**为什么显式版式把文字默认值分在 Master 与 Layout 两层。** Flat 与 structured 导出都会把标题锚点和确定性的九级 body 层级写入 Master 文本默认值，同时保留原有缩进与项目符号设置。Default 从锁定的字体合同读取这些锚点；无锁 Quick structured 导出则根据完整 SVG roster 中的语义 slot carrier 推导，carrier 未声明字号时使用确定性兜底值。在 structured 路线上，每个 Layout 文字槽位还会把 carrier 首个 run 的字号写入一级默认值，同时保留提示文字的直接字号。这样，插入或重置 placeholder 时仍能继承 Layout 特定尺度，而生成 Slide 上的直接 run 不变。
 
 **为什么 structured 输出要在发布前回读。** 元数据预检不能证明 package 序列化保留了所有 relationship 与注册信息。导出器会重新打开临时 PPTX，把已发布 Slide 与完整 Master/Layout roster 分开校验，包括没有任何 Slide 使用的定义；同时核对 Presentation → Master → Layout → Slide 注册链、物理 part/content-type roster、选择器身份、固定对象顺序、placeholder 类型/有效索引/bounds、carrier 绑定、隐藏 proxy 与零槽 Layout，只有通过后才发布。
 
-**为什么 Create Layout / Create Deck 分为创作模式和保留模式。** `pptx_template_import.py` 输出分层 Master/Layout/Slide 参考和 native 结构事实。`standard` / `fidelity` 把这些素材和视觉当参考，再按照确认后的可复用行为创作新拓扑。Mirror 则把已验证的来源 roster 与拓扑一对一物化到新工作区，只允许显式 structured 合同要求的机械归一化，不补造缺失事实。原始 PPTX 保持为不可变分析证据，不成为最终模板依赖。Create Brand 没有结构复制策略。
+**为什么 Create Layout / Create Deck 分为创作模式和保留模式。** `pptx_template_import.py` 输出新的紧凑可编辑 Master/Layout/Slide SVG 和 native 结构事实。`standard` / `fidelity` 据完整证据创作紧凑或更广的原型与新拓扑。Mirror 则审阅/创作每张解析后的紧凑 Slide 及其可达 Layout/Master 链，保持结构、语义和相似展示，但不要求 SVG 代码同构；materializer 只校验/合成当前作者树，不恢复普通 lossless 可见子树。未被来源 Slide 引用的结构不进入 mirror 输出。原始 PPTX 是不可变校验证据，不是最终模板依赖。
 
 **为什么 create-template 在两种范围都使用同一工作区路由。** `create-template` 仍以写入索引的 `library` 为默认，也可写入已初始化项目。两种根目录都要求 `templates/`；`images/`、`icons/` 和按需生成的 `exports/` 只有存在真实内容时才出现，已有 SVG 素材的引用规则也一致。Library 在单 kind 目录使用一份裸 spec，project 在共享 root 使用限定名 spec；schema 与素材路由保持一致，spec 落点及全局索引注册随范围变化。只有 Layout / Deck 拥有 structured SVG 合同，Brand 与 Style 保持 roster-free。
 
 **为什么模板 SVG 保持完整却仍能编译成原生结构。** 模板 SVG 会重复携带继承的 Master/Layout 视觉和示例 Slide 内容，因此可独立打开。生成时由 `page_layouts` 选择该原型，输出 SVG 仍保持视觉闭包。导出器移除重复继承原子、生成真实 Master/Layout part，并把槽位 carrier 与 Slide-local 内容留在 Slide。
 
-**为什么 PowerPoint 原生 Chart/Table 重建使用显式替换 marker，而不是自动替换对象。** 独立的 `pptx_to_svg.py` 导入器只为已验证的表格 / 图表子集输出可见 SVG fallback、`data-pptx-replace-with` 与 `<metadata type="application/json">`。生成型 deck 只为 §IX `Native-ready` 映射中以 `<object-key>=yes` 点名的语义对象准备这组内容；§VII 只保存正向 catalog reference，catalog marker 只是能力示例，不替项目做决策。父组 marker 决定 payload schema；普通 shape 与 connector 不使用该合同。表格导入覆盖精确的物理行列 topology、slave 为空的规范矩形 merge、安全的 solid/no-fill 逐边 border、纯文本多段落，以及封闭的 run 级富文本段落。富文本段落包含非空 `runs`；每个 run 必须有 `text`，并且只能使用 `bold`、`italic`、`underline`、`strike`、`color`、`font_size`、单一 `font_family`、`lang` 和 `alt_lang`。不含非空 `effectLst` / `effectDag` 的来源展示型 run XML 会归一化到该 schema；表格单元格 run 效果则会禁用原生替换，并添加阻塞效果诊断。带 relationship 的文本、扩展节点、换行、字段、tab、项目符号、破损文本 topology、非规范 merge、不安全 border 与非纯色填充仍保持 fallback-only。表格样式 `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}` 的规范化 fallback 会解析 `wholeTbl`、`firstRow`、横向带状行、主题颜色 / 字体和直接格式覆盖；这不代表完整 built-in/custom style registry。
+**为什么 PowerPoint 原生 Chart/Table 重建使用显式替换 marker，而不是自动替换对象。** `pptx_to_svg.py` 只为已验证子集输出 SVG preview、`data-pptx-replace-with`、`data-pptx-native-authority="json"` 与内嵌 `<metadata type="application/json">`。导入/模板对象是 JSON-first，preview 可近似；自由设计省略 authority marker，保持 SVG-first，并在 SVG 与 JSON 同步后显式写入 fallback baseline。生成型 deck 只为 §IX `Native-ready` 中以 `<object-key>=yes` 点名的对象准备 marker。父组决定 payload schema；普通 shape/connector 不使用该合同。表格使用 `ppt-master.semantic-table.v2`，把重复格式归纳为默认值和命名样式，导出时在内存展开。表格导入仍要求精确物理行列 topology、规范矩形 merge、安全逐边 border 和封闭富文本字段；合同外语义保持 fallback-only。
 
 受支持的柱 / 条 / 折线 / 面积、饼 / 圆环、散点 / 气泡图在没有 baked preview 时会生成确定性、可读的 SVG fallback，并标记 `data-pptx-fallback-kind="normalized"`。导入器还覆盖已验证的柱 / 折线 / 面积组合图、规范四系列 OHLC stock、数值日期轴面积图、采用封闭 `axes.x` / `axes.y` 合同的散点 / 气泡图、radar、安全的 `of_pie` `serLines`、坐标轴 / 标题 / 图例归一化，以及有界的柱 / 条图 gap/overlap 场景。`gapWidth` 只接受 `0..500` 内的单个整数，`overlap` 只接受 `-100..100` 内的单个整数；这两个表现字段在 native 输出中有意归一化，非法、重复或越界输入 fail closed。组合图可保留主 / 次 plot 各自的 category cache 与 workbook range。XY 导入根据各系列一致的有效 line/marker/smooth 状态推导 `scatter_style`。封闭的 category/value 与 XY 轴合同为 native read-back 保留 kind、position、visibility、label position、number format、min/max/major unit、reverse 和 major gridlines；规范化 XY fallback 只消费两个 `major_gridlines` 开关。
 
-ChartEx 导入被有意限制为 7 个已验证数据模型：`treemap`、`sunburst`、`histogram`、`pareto`、`box_whisker`、`waterfall` 与 `funnel`。其受支持的层级 / 分类 / 数值 / 系列 / 小计数据 topology 可经 native 输出再导入回读。数值 cache 必须非空且有限，count/index 必须是规范非负整数，并满足精确连续的 point topology。来源 ChartEx 的样式、坐标轴、标签与 binning 可能归一化；这不代表任意 ChartEx 导入或表现层保真。C4/C5 不扩展 normalized renderer，因此 renderer 外的有效 active 类型在没有源 preview 时仍使用 `data-pptx-fallback-kind="placeholder"`。完整 `AxisSpec`、任意 ChartEx 家族、任意富文本 OOXML、旋转 / 翻转 / 3D 图表、未验证的 combo/stock/date-axis 变体及其他未建模语义仍不在 active 导入子集内。native replacement 仍可能归一化 payload 外的表现细节，并保留数据模型优先 warning。默认导出把 fallback 子元素作为可编辑 DrawingML shape；只有 `--native-charts-and-tables` 才启用带数据源和对象专属编辑模型的 PowerPoint 原生 Chart/Table。每个 active 导入 marker 都带有 `data-pptx-import-source="pptx"` 与 `data-pptx-fallback-sha256`：可见 fallback、可达 SVG definition/reference 或 marker transform 变更后，native replacement 会 fail，而不是丢弃 SVG 编辑；仍保留导入来源标记但没有 hash 的旧导入 marker 兼容并给出 warning。生成型创作会同时省略导入来源和静态 baseline，且不产生 warning。该 importer/exporter 组合只用于重建，不替代 `template-fill-pptx` 或 `native-enhance-pptx` 的保留型路线。
+ChartEx 导入被有意限制为 7 个已验证数据模型：`treemap`、`sunburst`、`histogram`、`pareto`、`box_whisker`、`waterfall` 与 `funnel`。其受支持数据 topology 可经 native 输出再导入回读，合同外表现仍可能归一化。默认导出把 preview 子元素作为可编辑 DrawingML shape；只有显式 `--native-charts-and-tables` 才启用原生 Chart/Table。JSON-first 不受 preview freshness 否决；SVG-first 必须有合法且最新的 `data-pptx-fallback-sha256`，否则 native replacement fail closed。marker、semantic table 或 imported chart package 的存在都不会隐式激活原生替换。该 importer/exporter 组合只用于重建，不替代保留型路线。
 
 ---
 
@@ -772,7 +771,7 @@ ChartEx 导入被有意限制为 7 个已验证数据模型：`treemap`、`sunbu
 |---|---|
 | 不要把模板名或风格短语模糊匹配到库路径 | 模板选择必须是确定性的；套错工作区比自由设计更难恢复 |
 | 不要把原生 PPTX 模板当作 Step 3 模板 | 作为模板 / 页面壳时应走原生克隆与填充；作为来源、1:1 beautify 或可重构材料时分别走对应 Generate 边界，而不是把 PPTX 直接交给 Step 3 |
-| 不要把 `template-fill-pptx`、`beautify-pptx`、`native-enhance-pptx` 合成一个“PPTX 优化”路线 | 三者的保留契约不同：原生填充、1:1 重排、直接增强是三种操作 |
+| 将原生填充与增强合并为 Edit Native PPTX；保留独立的 `beautify-pptx` | 填充与增强共享同一个保留来源的 round-trip 工作区和 `svg_to_pptx.py --roundtrip` 导出器；beautify 通过 Generate 重做每一页，而不是保留来源页面 |
 | 不要用脚本批量生成 Executor SVG 页面 | 跨页设计判断依赖主代理逐页连续创作 |
 | 不要把 `image_analysis.csv` 当持久缓存 | `images/` 是实时工作目录；事实必须按需重算 |
 | 不要让 `svg_final/` 成为 native PPTX 默认输入 | `svg_final/` 为视觉预览而重写资源，native 转换需要 `svg_output/` 的高保真语义 |
@@ -786,7 +785,7 @@ ChartEx 导入被有意限制为 7 个已验证数据模型：`treemap`、`sunbu
 
 ## 顶层路线与支撑文档
 
-[`workflows/index.md`](../../skills/ppt-master/workflows/index.md) 是仅供维护者使用的目录，不进入任务加载链。运行时路线选择以 [`workflows/routing.md`](../../skills/ppt-master/workflows/routing.md) 为权威。PPT Master 只有四条顶层产物路线：Generate PPTX、Create Template、Fill Native PPTX、Enhance Native PPTX。用户请求只能进入其中一条；任何支撑文档都不与它们竞争。
+[`workflows/index.md`](../../skills/ppt-master/workflows/index.md) 是仅供维护者使用的目录，不进入任务加载链。运行时路线选择以 [`workflows/routing.md`](../../skills/ppt-master/workflows/routing.md) 为权威。PPT Master 只有三条顶层产物路线：Generate PPTX、Create Template、Edit Native PPTX。用户请求只能进入其中一条；任何支撑文档都不与它们竞争。
 
 支撑文件保持拆分，只是为了收紧路线合同，并在需要时加载可选上下文：
 
@@ -796,7 +795,7 @@ ChartEx 导入被有意限制为 7 个已验证数据模型：`treemap`、`sunbu
 | 模板子工作流 | `create-brand`、`create-style`、`create-layout`、`create-deck` | Create Template 在“仅身份 / 无 roster 的方向与方法 / 品牌中立且应用中立的结构 / 应用语境与身份结构一体化”中只分派一个 |
 | 模板输入阶段 | `apply-template-workspace` | Default Stage 1 确认至少一个工作区后、Stage 2 前运行；自由设计跳过安装，Quick 可直接提供精确 root |
 | 生成阶段 | `topic-research`、`resume-execute`、`refine-spec`、`verify-charts`、`visual-review`、`live-preview`、`customize-animations` | Generate PPTX 中各自定义的 intake、planning、editing、quality 或 post-processing 节点 |
-| 共享阶段 | `generate-audio` | Generate PPTX 后处理，或 Enhance Native PPTX 的旁白集成 |
-| 治理文档 | `failure-recovery` | 四条顶层路线的全局停止 / 继续规则；Generate PPTX 的具体故障矩阵与续跑入口 |
+| 共享阶段 | `generate-audio` | Generate PPTX 后处理，或 Edit Native PPTX 的旁白集成 |
+| 治理文档 | `failure-recovery` | 三条顶层路线的全局停止 / 继续规则；Generate PPTX 的具体故障矩阵与续跑入口 |
 
 这种分类是职责边界，不是文件命名偏好。只有出现不同的产物生命周期和修改模型时，才新增顶层路线；Create Template 内按模板类型区分的执行归入子工作流，路线内的可选行为归入 profile 或 stage，跨路线政策归入 governance。

@@ -314,7 +314,7 @@ python3 skills/ppt-master/scripts/svg_to_pptx.py <project> -a auto --animation-t
 
 原生图表 / 表格替换、讲稿、动效、旁白和诊断等普通导出能力仍可按需使用；讲稿、自定义对象动画和旁白默认关闭，Agent 可在用户要求或 deck 确有需要时自动启用，不会打开确认流程。使用默认输出路径时会生成普通 postflight 报告，并把 `svg_output/` 备份到 `backup/`；显式指定输出路径时沿用普通流程不创建备份的行为。页数本身既不会自动触发，也不会阻止快速生成。
 
-Quick 省略独立规划阶段，但仓库没有文档化的测量或保证表明它会降低多少 token；逐页 SVG 创作仍然存在。Quick 保留同一套页面级视觉与资源创作能力，以及共享的 SVG / 资源阻塞标准；它不运行 Spec Lock 对齐检查，包内保留转换器默认 Theme 脚手架，而不是从 lock 派生主题色、字体与 Master 标题/正文默认字号。由于没有已确认的设计契约、首屏校准或可恢复的决策历史，它不承诺与 Default 作出相同设计，也不承诺具体耗时。
+Quick 省略独立规划阶段，但仓库没有文档化的测量或保证表明它会降低多少 token；逐页 SVG 创作仍然存在。Quick 保留同一套页面级视觉与资源创作能力，以及共享的 SVG / 资源阻塞标准；它不运行 Spec Lock 对齐检查，也不从 lock 派生当前项目 Theme。Flat Quick 保留转换器默认 Theme 脚手架；structured Quick 在工作区提供时保留逐 Master 源 Theme，并从语义 slot carrier 推导 Master 标题／正文字号默认值。由于没有已确认的设计契约、首屏校准或可恢复的决策历史，它不承诺与 Default 作出相同设计，也不承诺具体耗时。
 
 ## Q: 长 PPT 一次生成会不会上下文爆掉？
 
@@ -334,12 +334,12 @@ Quick 省略独立规划阶段，但仓库没有文档化的测量或保证表�
 
 ## Q: 我手上有一份现成的 PPT，想基于它做东西，该走哪条路？
 
-把「用一份已有 PPT」拆成两个问题：**留不留它的内容**、**留不留它的设计（版式 + 视觉）**。四种组合对应三种生成路径，以及直接保留原文件这一种无需生成的结果：
+把「用一份已有 PPT」拆成两个问题：**留不留它的内容**、**留不留它的设计（版式 + 视觉）**。四种组合对应三种处理路径，以及直接保留原文件这一种无需生成的结果：
 
 | 意图 | 路线 | 固定不变的东西 |
 |---|---|---|
 | 留内容 + 重做版式 | **Generate PPTX + beautify profile** | 页数、页序、每页文字、图表/表格数据 |
-| 换内容 + 留设计 | **Fill Native PPTX** | 原生页面设计；可选择、乱序、复用源页 |
+| 换内容 + 留设计 | **Edit Native PPTX** | 保留原生设计；未改页面逐字节保留，选中页面可编辑、重排、重复或省略 |
 | 只留内容，设计与分页都重来 | **Generate PPTX** | 源事实；故事结构和页数都可重构 |
 | 留内容 + 留设计 | 不必生成 | 直接用原文件 |
 
@@ -347,7 +347,7 @@ Quick 省略独立规划阶段，但仓库没有文档化的测量或保证表�
 
 用 **主管线** 的前提是：原 PPT 只是内容材料。流程会用 `ppt_to_md` 抽成 Markdown，并读取 `analysis/` 里的 PPTX intake 事实，再由 Strategist 自由重构大纲（合页 / 拆页 / 换序）。典型说法是「用这份 PPT 的内容重做一份更好的」或「提炼成 10 页高管汇报」。
 
-beautify 和主管线的一句话判别：**原来的分页是要保留的信息，还是只是前一作者的结构、可以推翻？** 保留 → beautify；推翻 → 主管线。落到硬判据就是**页数 / 页序**：只要它有任何变化——拆页、合页、删页、换序，乃至「一字不改、只把某张太挤的页拆开排得更好看」——都属于重分页，走主管线。beautify 严格 1:1。
+只有在可见设计会被重新生成时，才用这句话区分 beautify 与普通 Generate：**原来的分页是要保留的信息，还是只是前一作者的结构、可以推翻？** 保留 → beautify；推翻 → 普通 Generate。beautify 严格 1:1。若原生设计必须保留，则改走 Edit Native PPTX；它的 `page_plan.json` 可以选择、重排、重复或省略既有页面，而不重设计这些页面。
 
 如果用户说法含糊，比如「把这份 PPT 做得更专业一点」「优化一下这个 deck」，AI 应先问一句：**要保留原页数、页序和每页文字，只做美化；还是把 PPT 当素材，重新梳理成一份新故事？**
 
@@ -357,23 +357,24 @@ beautify 和主管线的一句话判别：**原来的分页是要保留的信息
 
 ## Q: 我已经有一份做好的 `.pptx`，能不能复用它的设计、只填新内容？
 
-可以——这就是 **套模板（template fill）** 路径，独立于 SVG 生成管线。把你现成的 `.pptx` 连同素材（或一个主题）给 AI，说「套模板 / 把这些填回去」。它会把你的 deck 当作原生页面库，只挑适合新内容的页面（可乱序、可重复），把新文字——以及原生表格单元格、图表数据——直接写回原始 OOXML。
+可以——这就是 **Edit Native PPTX** 路线，独立于 Generate。把现成的 `.pptx` 连同素材（或一个主题）给 AI，说「套模板 / 把这些填回去」。它会把 deck 导入 `projects/` 下保留来源的 round-trip 工作区，把来源页面当作原生页面库，并在编辑选中内容前选择、重排、重复或省略页面。
 
-输出仍是 100% 原生可编辑的 PowerPoint：原设计、母版、图片、动画都保留，且只导出计划中的页面。它刻意**不**创作新的版式拓扑，也不替换源图。`fill_plan.json` 中有序的 `slides` 清单可以省略、乱序或重复源页面壳，因此输出页数可以不同于源文件。一份 deck 的页面结构本身承载着逻辑（总分、对比、递进），所以应挑选结构本就契合内容的页面，而不是硬塞进去。若源页面库缺少所需的新结构，请走普通 Generate，或先 Create Template、再从产出的工作区 Generate。完整步骤：[套模板工作流](../../skills/ppt-master/workflows/template-fill-pptx.md)。
+未改的输出页面会被引用并逐字节恢复；在编辑过的页面上，未改对象恢复为原生形态，只有改过的对象会重建。`page_plan.json` 中有序的 `pages` 清单使用 `source_slide` 和可选的 SVG 副本文件名选择、重排、重复或省略来源页面。讲稿、旁白、计时和转场都作为保留页面上的叠加内容。一份 deck 的页面结构本身承载着逻辑（总分、对比、递进），所以应挑选结构本就契合内容的页面，而不是硬塞进去。若源页面库缺少所需的新结构，请走普通 Generate，或先 Create Template、再从产出的工作区 Generate。完整步骤：[Edit Native PPTX 工作流](../../skills/ppt-master/workflows/edit-native-pptx.md)。
 
 ---
 
 ## Q: 内容填到了意料之外的位置——怎么查看 PPT Master 到底识别到了什么？
 
-两条消费 PPTX 的路径都会在生成之前先写出一份只读分析报告，读它就能确认哪些图形被识别到了。
+Edit Native PPTX 与 Create Template 都会在开始创作前写出可读清单，用它确认识别到的页面和对象。
 
-**套模板（Fill Native PPTX）**：
+**Edit Native PPTX**：
 
 ```bash
-python3 skills/ppt-master/scripts/pptx_intake.py <deck.pptx> -o <analysis_dir>
+python3 skills/ppt-master/scripts/pptx_to_svg.py <deck.pptx> \
+  -o projects/<slug> --inheritance-mode both --roundtrip
 ```
 
-`<stem>.slide_library.json` 会逐页列出每个可填充槽位的几何、段落数与文字度量，并单独给出 `tables` 与 `charts`。带样式的普通文本框同样算槽位——图形不必是真正的占位符才能被填充。
+`authoring-svg-flat/authoring_summary.json` 会列出来源页面清单，以及逐页文字、图片、矢量、placeholder 和 source-reference 数量；只打开确实要判断或编辑的紧凑 SVG 页面。
 
 **Create Template**：
 
@@ -414,7 +415,7 @@ Create Template 会先确认简报，再写入已注册、可发现的 `library`
 
 **第一步 — 准备参考材料**
 
-**最推荐的方式是直接给原始 `.pptx` 文件**。PPT Master 会提取包内实际存在且受支持的主题色、字体、Master/Layout、placeholder type/idx、原生形状信息和可复用图片资源。`standard` 与 `fidelity` 把来源当作视觉参考，重新设计 SVG roster 和新的 Master/Layout/slot 系统，不保留、也不蒸馏来源拓扑。`mirror` 则把这些已验证的来源事实物化到新工作区，不做语义归纳或缺口补造。由于结构层禁止 `<g>`，来源 Master/Layout 的 group wrapper 只允许机械展开成直接原子。
+**最推荐的方式是直接给原始 `.pptx` 文件**。PPT Master 会提取包内实际存在且受支持的主题色、字体、Master/Layout、placeholder type/idx、原生形状信息和可复用图片资源。`standard` 与 `fidelity` 把完整来源清单作为证据，重新设计 SVG roster 和新的 Master/Layout/slot 系统，不保留、也不蒸馏来源拓扑。`mirror` 则为每张来源 Slide 输出一个原型，并只把这组 Slide 可达的 Layout/Master 事实物化到新工作区，不做语义归纳或缺口补造；未引用的来源 Layout/Master 只保留为分析证据，不进入 mirror 输出。由于结构层禁止 `<g>`，来源 Master/Layout 的 group wrapper 只允许机械展开成直接原子。
 
 完整导入 SVG 可以保留高级 PowerPoint 形状所需的 metadata、隐藏 carrier 和预览指纹，并作为载荷后备留在临时分析工作区且保持不可变。模板创建使用带文档内 source ref 和紧凑路径/hash manifest 的轻量可编辑 IR。`standard` / `fidelity` 创作项目规范化 SVG，只有精确匹配已登记 preset 时才使用 compact authored-preset 组。Mirror 从 IR 物化最终模板，只为未改且 hash 匹配的 Slide-local/slot ref 重新接入转换器已经支持的载荷；不支持或已修改的对象保留当前 SVG fallback。
 
@@ -434,7 +435,7 @@ Create Template 会先确认简报，再写入已注册、可发现的 `library`
 
 **第三步 — 等待完成**
 
-AI 代理会自动完成后续工作——分析参考、写入 kind 专属规范，仅为 Layout/Deck 构建结构定义，并验证工作区。Brand/Style 不生成预览 PPTX；Layout/Deck 可按请求生成 `exports/<id>_template_preview.pptx`，多 Master 时必须生成。两种范围都要求 `templates/`；Brand/Layout/Deck 可使用包自有 `images/` 和 `icons/`，Style 只贡献自己的 Design Spec。`library` 在 `skills/ppt-master/templates/<kind>/<id>/` 写入裸 `templates/design_spec.md` 并完成全局注册；`project` 在 `projects/<name>/` 写入 `templates/design_spec.<kind>.<id>.md` 并跳过注册，四种 kind 均可各自共存一份；Layout 与 Deck 同时存在时，Layout 拥有有效 SVG roster。空的可选目录直接省略。把这个工作区 root 交给 Step 3 时，项目 root 会原子贡献其中全部 spec，安装不会复制 `exports/`。兼容的旧平铺 Brand/Layout/Deck 工作区只有在满足当前 kind 合同时才可读取，Layout/Deck 还必须满足当前 structured SVG 合同；Style 不存在旧平铺形态，语义旧包必须通过 `create-template` 替换，不能原地升级。
+AI 代理会自动完成后续工作——分析参考、写入 kind 专属规范，仅为 Layout/Deck 构建结构定义，并验证工作区。Brand/Style 不生成预览 PPTX；Layout/Deck 可按请求生成 `exports/<id>_template_preview.pptx`，多 Master 时必须生成。两种范围都要求 `templates/`；Brand/Layout/Deck 可使用包自有 `images/` 和 `icons/`，Style 只贡献自己的 Design Spec。`library` 在 `skills/ppt-master/templates/<kind>/<id>/` 写入裸 `templates/design_spec.md` 并完成全局注册；`project` 在 `projects/<name>/` 写入 `templates/design_spec.<kind>.<id>.md` 并跳过注册，四种 kind 均可各自共存一份；Layout 与 Deck 同时存在时，Layout 拥有有效 SVG roster。空的可选目录直接省略。把这个工作区 root 交给 Step 3 时，项目 root 会原子贡献其中全部 spec，安装不会复制 `exports/`。旧平铺或语义旧包只能作为参考输入，必须通过 `create-template` 重建为当前工作区后才能被 Generate 选择。
 
 > **提示**：对风格和使用场景描述得越具体，生成的模板就越符合你的预期。
 

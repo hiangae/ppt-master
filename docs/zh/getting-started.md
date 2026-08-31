@@ -51,12 +51,12 @@ python3 -m pip install -r "<installed-skill-dir>/requirements.txt"
 
 | 你想要… | 路径 | 会发生什么 |
 |---|---|---|
-| **用这份 deck 的原生页面壳承载新内容** | Fill Native PPTX | 克隆选中的源页面，并在 OOXML 中直接改写文字 / 表格 / 图表数据。来源设计保持原生；输出是受现有页面壳约束的新回填 deck。 |
+| **用这份 deck 的原生页面壳承载新内容** | Edit Native PPTX | 导入 round-trip 工作区；未改页面逐字节恢复，`page_plan.json` 可选页、重排、重复或省略，且只编辑计划中的页面。 |
 | **先建立可复用设计系统，再生成新 deck** | Create Template → Generate PPTX | 从参考材料创建经过验证的 Brand、Style、Layout 或 Deck 工作区，再创作一份新 deck。新故事、结构与页数都可以不同于来源。 |
 
-前者:把 `.pptx` 连同素材(或一个主题)给 AI,说「套模板」——见 [套模板工作流](../../skills/ppt-master/workflows/template-fill-pptx.md)。本节其余部分讲 create-template。
+前者：把 `.pptx` 连同素材（或一个主题）给 AI，说「套模板」——见 [Edit Native PPTX 工作流](../../skills/ppt-master/workflows/edit-native-pptx.md)。本节其余部分讲 create-template。
 
-**想把某份现成 PowerPoint 做成可复用工作区，必须显式请求 Create Template 路线。** 原生 `.pptx` 加新材料默认属于 Fill Native PPTX，并不是 Generate 可以直接消费的模板工作区。先创建工作区：
+**想把某份现成 PowerPoint 做成可复用工作区，必须显式请求 Create Template 路线。** 原生 `.pptx` 加新材料默认属于 Edit Native PPTX，并不是 Generate 可以直接消费的模板工作区。先创建工作区：
 
 ```
 你：用 /create-template 从 projects/brand/our_deck.pptx 创建一个可复用 Deck 模板
@@ -108,13 +108,16 @@ Default Generate 把模板选择放在 Stage 1，与沟通契约同屏确认；�
 你：这份内容直接做成 PPT,跳过确认,8 页左右,深色商务风
 ```
 
-**你明确提的照做,你没提的 AI 直接定,不再回来问你。** 第二个例子里的页数和风格照样生效——快速模式省掉的是来回确认,不是你的话语权;什么都不提,才是全部交给 AI 决定。
+**你明确提的照做,你没提的 AI 直接定,不再回来问你。** 第二个例子里的页数和风格照样生效——快速模式省掉的是来回确认,不是你的话语权。Quick 不会真正生成 Default 的三套方向，而是直接执行 Default 会推荐的方向：自由设计时选整体适配度最高者，已安装模板时选最充分表达模板上下文的可行方向。什么都不提，才是全部交给 AI 决定。
 
 快速模式不会打开 Confirm UI 的模板选择页。每个 kind 最多给出一个精确的
 Brand / Style / Layout / Deck 工作区 root，它会直接校验、安装并使用；没有
 给出精确 root，就直接自由设计。只写模板名或风格词仍然只是设计说明。
-Quick 保持无锁 flat 导出，因此 Layout / Deck 原型会指导页面创作，但不会
-编译成可复用的原生 Master / Layout 对象。
+Quick 保持无锁流程，但不丢失模板能力：自由设计及仅 Brand / Style 的输出
+保持 flat；一旦提供 Layout / Deck 工作区，创作 SVG 中的显式 Master /
+Layout / slot 元数据会保留，并编译成可复用原生结构。P01 前，agent 会读取
+全部已安装模板 SVG，并在当前上下文冻结一段自然语言应用方案；不创建确认页
+或 spec 工件。
 
 它不跳过能力：来源转换、事实缺口研究、共享美学规范、图片 / 图标准备，以及原生形状 / 图表 / 表格创作仍按需运行。结构性公式直接写成 PowerPoint 原生 marker，不再作为图片素材准备。显式选择的 manual 素材或其他不可替代的文件依赖缺失时，Quick 会阻塞并索取文件；自动 AI 生成或其必需切片路径耗尽时，Quick 会移除失败任务与过期 manifest 条目，改用原生可编辑文字 / SVG 或已经备好的非 AI 素材，继续本次运行，并在最终交接中披露替代结果。
 

@@ -18,7 +18,7 @@ PPT Master 模板是一种可复用工作区，明确分为四类：**Brand** �
 
 | 起点与目标 | 路线 | 可直接复制的请求 |
 |---|---|---|
-| 手里是原始 `.pptx`，想保留现有页面壳并替换内容 | **Fill Native PPTX** | `用 projects/source/template.pptx 套入 projects/source/content.md 的内容。` |
+| 手里是原始 `.pptx`，想保留现有页面壳并替换内容 | **Edit Native PPTX** | `把 projects/source/content.md 的内容套进 projects/source/template.pptx；保留原设计，只选适合的页面。` |
 | 已有可复用 Brand/Style/Layout/Deck 工作区，想生成一份全新 deck | **Generate PPTX → Stage 1 模板选择控件** | `用 sources/report.pdf 做 deck，模板用 skills/ppt-master/templates/layouts/presentation_core/。` |
 | 手里是 PPTX、SVG、品牌手册、网站、图片或混合参考，想先建立可复用系统 | **Create Template → Generate PPTX** | `用 /create-template 从 projects/brand/our_deck.pptx 创建一个可复用 Deck 工作区。` |
 
@@ -56,8 +56,9 @@ root 时会预选，多 root 仍只作为未选候选。系统不会根据主题
 > 校验并使用，每个 kind 最多一份；Layout 与 Deck 可以共存，结构由 Layout
 > 优先提供。多 kind root
 > 会原子地贡献其全部 spec。没有精确 root 就直接自由设计，裸模板名仍不会
-> 被解析。Quick 继续采用无锁 flat 导出，因此 Layout/Deck 原型是页面创作
-> 输入，不会变成可复用的原生 Master/Layout 输出。
+> 被解析。Quick 是无锁而不是无结构：自由设计和仅 Brand/Style 的输出保持
+> flat；一旦由 Layout/Deck 提供结构，创作 SVG 与导出的 PPTX 都保留显式
+> Master/Layout/slot 元数据。
 
 ### 怎么使用选择器
 
@@ -83,7 +84,16 @@ Layout 提供结构。指定地址最多选一个，并原子携带
 `images/`、`icons/`。最终 Stage 2 再把已确认沟通契约与安装状态适配；
 `template_application` 只描述**如何使用**，不负责决定**选哪个模板**。
 
-> **兼容性预检：** Step 3 也接受 `design_spec.md` 直接位于所给根目录、且满足当前 kind 合同的旧式平铺 Brand/Layout/Deck 工作区。Layout/Deck 还必须带有当前 structured SVG；Style 没有平铺形态。旧的原子 placeholder、未映射 Master/Layout 等语义旧包会被拒绝。先运行 `create-template` 创建新工作区，再从该工作区生成新的 structured 页面；不会原地升级旧包。
+`template_application` 是一段自然语言，不是模式选择器。用户有明确要求时以
+用户要求为准；没有时，AI 阅读全部已安装模板 SVG，根据当前内容判断；没有
+更强理由时，默认按参照型使用。参照型是在读完整套 SVG 后允许重新设计；增强型
+冻结已有非 slot 对象、允许修改 slot，并且只新增；替换型只更换信息载体，
+其余内容保持不动。这些只是常见意图表达，不是固定选项。任何只针对某一原型的
+规则都必须写出精确 SVG 文件名。Quick
+也形成并冻结同样的一段方案，只是保留在当前上下文，不写确认页、Design Spec
+或 lock。
+
+> **当前工作区预检：** Step 3 只接受在 `templates/` 下提供 Design Spec 的工作区根目录。根目录平铺、旧的原子 placeholder、未映射 Master/Layout 等语义旧包都会被拒绝。先运行 `create-template` 创建新工作区，再从该工作区生成新的 structured 页面；不会原地升级旧包。
 
 ### 什么**不会**自动选中模板
 
@@ -222,27 +232,33 @@ Create Style 会直接写入已确认的方向/方法 spec，不进入 SVG 创�
 
 - 需要精炼时，创建紧凑的可复用系统；
 - 来源本身包含有价值的多种版式时，创建更广的来源对齐原型；
-- 明确要求原样保留、且来源结构完整受支持时，进行字面物化。
+- 明确保留且来源结构完整受支持时，基于解析证据创作紧凑 mirror。
 
 Layout/Deck frontmatter 仍会记录 `replication_mode: standard|fidelity|mirror` 以兼容工具并保留审计信息；它是实现记录，不是用户选项。Style frontmatter 有意不写 replication/native-structure 字段。品牌中立的 Layout 不能同时字面保留品牌/应用事实，AI 会按目标重新创作 Layout，或把这些事实留在 Deck 中。
 
 **关于精灵图**：PPTX 导出的素材常常是**一张大图 + 多页通过 viewBox 裁剪不同区域**。`fidelity` 和 `mirror` 模式下必须保留这层嵌套 `<svg viewBox=...>` 包装，不能扁平化为单张 `<image>`——否则裁剪信息丢失，画面会错位。工作流会自动校验这一点。
 
-**关于 PowerPoint 原生形状**：完整导入 SVG 作为原生载荷后备留在临时分析工作区且保持不可变；模板创建使用轻量、可编辑的 `authoring-svg/` IR 及其 source-ref/hash manifest。创作模式使用项目规范化 SVG，只有精确匹配已登记 preset 时才使用 compact authored-preset 组。Mirror 从 IR 物化最终模板 SVG，只为未改且 hash 匹配的 Slide-local/slot ref 重新接入转换器已支持的载荷；固定 Master/Layout 层保持直接原子，不支持或已修改的对象保留当前 SVG fallback，最终模板不包含 IR 专用 ref。
+**关于 PowerPoint 原生形状**：完整导入 SVG 作为不可变来源/包证据与受支持非可见载荷后备；模板创建使用新生成的紧凑可编辑 `authoring-svg/` 及其 source-ref/hash manifest。Template_Designer 会实际审阅/创作该 SVG，保持结构、语义和相似展示，但不要求代码同构。publisher 只校验、合成并发布当前可见作者树，绝不回填普通 lossless 可见子树。导入/模板拥有的 Chart/Table JSON 始终内嵌且为权威，其 preview 可以近似。
 
-对于 PPTX 来源的 Type A mirror，最终物化统一使用一个确定性命令：
+对于 PPTX 来源的 Type A mirror，完成作者审阅后，最终校验/发布统一使用一个确定性命令：
 
 ```bash
 python3 skills/ppt-master/scripts/mirror_template_materialize.py \
   "<import_workspace>" "<template_workspace>"
 ```
 
-它会先校验 IR manifest、不可变来源 hash、完整原生图谱、可见性事实和
-导入向量闭包，再原子发布按源顺序排列的 SVG roster 及
+它会先校验来源 SHA/已知 ref、作者 manifest、可达原生图谱、
+可见性/分配事实和导入向量闭包，再原子发布当前按源顺序排列的 SVG roster 及
 `icons/imported/`、`images/` 素材。它不要求、也不会把按需生成的
 `svg-flat/` 校验视图当成模板来源，并且不会生成 Design Spec；设计角色必须针对物化后的 roster 写入已解析的 spec 路径。
 
-**Mirror 图谱边界**：mirror 保留完整且受支持的来源 Master/Layout 图谱。它为每张来源 Slide 输出一个完整原型，并为未被任何来源 Slide 使用的 Layout 额外输出一个定义专用的 `layout_<layout_key>.svg`。后者通过独立 Layout roster 注册进 PowerPoint，不会变成发布页面；其父 Master 也随之保留。预检只在必要来源事实或受支持几何缺失时停止，不会仅因 Layout 未使用而停止。
+**Mirror 图谱边界**：mirror 为每张来源 Slide 输出一个完整原型，并只保留该 Slide 引用的 Layout 及其父 Master。SVG 会补齐 Master + Layout + Slide 上下文，同时保留显式层归属。未被任何 Slide 引用的来源 Master/Layout 不由 mirror 物化；`standard` / `fidelity` 可读取完整来源清单，并把有用结构重新创作为 Slide 原型。
+
+Design Spec 对每个输出 Slide 原型按正常 roster 说明。若来源还存在未被引用的 Master/Layout，可用一句范围说明指出它们存在、但未由 mirror 物化，不逐个推断用途。
+
+模板使用以 Slide 为主：生成页面 SVG 已经补齐 Master 与 Layout 视觉，正常创作直接选择完整 Slide 原型；工作区不再存放独立 Master/Layout 定义 SVG。
+
+“只生成 Slide”描述的是可编辑 SVG roster。PPTX 来源的 mirror 仍可携带 `source_themes.json`、`native_payloads.json.gz` 等仅供工具使用的结构 sidecar，用于保存可达结构的精确 Theme 及受支持的不透明恢复 payload/属性记录；它们不是页面原型，也不进入 AI 创作上下文。语义 Chart/Table JSON 始终内联在对应 SVG marker 中。
 
 **按 mirror 创建的工作区怎么消费**：从来源到工作区的 `replication_mode: mirror` 是一种能力，不是项目选择。Strategist 会读取真实原型、当前内容和用户明确要求，自动决定选哪些页、哪些重复/跳过/重排，以及采用字面、结构还是仅视觉参考。字面复用时，Executor 复制完整 SVG，只修改允许变更的可见文字，同时保留装饰、精灵图裁剪、几何坐标和规范化结构声明；仍不要求沿用来源页数或页序。
 
@@ -275,7 +291,7 @@ Brand/Style 的目标不同：两者都让创作内容保持 Slide 本地，因�
 
 `exports/<id>_template_preview.pptx` 是 Create Template 按需或按规则生成的审阅证据，不是模板输入；真正生成时始终传工作区根目录。
 
-Master/Layout 行为以 Microsoft PowerPoint 为验收目标。Keynote、WPS 与 LibreOffice 可以打开 PPTX，但可能归一化模板结构，或在加载包含大量未使用 Layout 的 mirror roster 时明显更慢。
+Master/Layout 行为以 Microsoft PowerPoint 为验收目标。Keynote、WPS 与 LibreOffice 可以打开 PPTX，但可能归一化模板结构。
 
 ### 派生后的模板工作区长什么样
 
@@ -329,7 +345,7 @@ Brand 与 Style 只写 `templates/design_spec.md`（Brand 可带真实身份资�
 - **模板不是一张不可拆分的“风格皮肤”。** Brand、Style、Layout 与 Deck 有意拆开身份、方向/方法、结构和应用，使每个片段都能单独复用；同时安装多个工作区时，各片段按明确的所有权规则生效
 - **模板不会替你做内容决策**。策略师仍然会按内容判断每页用哪个版式、要不要扩展为变体，模板提供候选，不预设结果
 - **`fidelity` 模式不等于像素级搬运**。即便是 `literal` 保真，AI 仍会把杂质和不必要的重复结构清理掉——载体保留几何，但不照抄冗余
-- **`mirror` 的目标是受支持范围内的视觉与来源拓扑忠实，不是字节级 OOXML**。它继承源 PPT 的导入限制，只允许固定结构层 group 展开等机械归一化。不支持的原生对象保留可用 SVG fallback 或明确报告；mirror 不归纳替代 ownership。
+- **`mirror` 的目标是受支持范围内的视觉及每张来源 Slide 的可达拓扑忠实，不是字节级 OOXML**。它继承源 PPT 的导入限制，只允许继承补全、固定结构层 group 展开等机械归一化。不支持的原生对象保留可用 SVG fallback 或明确报告；mirror 不归纳替代 ownership。
 
 ---
 

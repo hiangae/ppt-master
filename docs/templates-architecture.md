@@ -19,11 +19,11 @@
 | **Layout** | `templates/layouts/<id>/` | Brand-neutral structure segment only: canvas / page structure / semantic text roles / page types / SVG roster | No brand identity and no recurring communication application | `workflows/create-template/create-layout.md` |
 | **Deck** | `templates/decks/<id>/` | A recurring presentation family: descriptive application context + integrated identity + structure | — | `workflows/create-template/create-deck.md` |
 
-Every newly created Layout/Deck SVG is a complete preview with root Master/Layout key and picker names, direct atomic Master/Layout elements, and top-level semantic slot groups. A normal slot has positive design-zone bounds and exactly one compatible carrier; composite `object` regions use explicit proxy binding, and zero-slot Layouts are valid. These specialized markers are authoritative; minimal `data-pptx-role` hints are added only for structural page-frame behavior they cannot express. Create Template derives `standard` / `fidelity` / `mirror` internally from the natural-language intent and source evidence. Authored strategies create new SVGs and structure; mirror materializes validated source facts. Strategist later derives strict/adaptive exporter behavior from the actual prototypes and current content. None of these implementation values is a required user choice. A legacy-flat Brand/Layout/Deck directory with `design_spec.md` at its root remains readable only when it satisfies the current kind contract; Style has no legacy-flat form. Semantic-legacy packages must be replaced by a newly created template workspace; they are never upgraded in place.
+Every newly created Layout/Deck SVG is a complete preview with root Master/Layout key and picker names, direct atomic Master/Layout elements, and top-level semantic slot groups. A normal slot has positive design-zone bounds and exactly one compatible carrier; composite `object` regions use explicit proxy binding, and zero-slot Layouts are valid. These specialized markers are authoritative; minimal `data-pptx-role` hints are added only for structural page-frame behavior they cannot express. Create Template derives `standard` / `fidelity` / `mirror` internally from the natural-language intent and source evidence. Authored strategies create new SVGs and structure; mirror materializes validated source facts. Strategist later derives strict/adaptive exporter behavior from the actual prototypes and current content. None of these implementation values is a required user choice. Generate accepts only the current nested workspace contract; older flat or semantic-legacy packages must be rebuilt through Create Template and are never upgraded in place.
 
 The four are **parallel reusable-rule bundles**, not PowerPoint package-object types. In library scope, the physical directory and the frontmatter `kind` field correspond one-to-one:
 
-Each installed spec keeps its own `kind` and id; there is no merged project spec and no combined capability label. The routing consequence is derived while reading: structure comes from an installed Layout or Deck, identity from an installed Brand or Deck, direction from an installed Style. A project-local Brand + Layout pair therefore has both capabilities installed without being promoted into a reusable library Deck or inventing application context. The current project's Stage-1 communication contract supplies that context. Strategist derives the template application plan internally; the confirmation page exposes no template mode controls.
+Each installed spec keeps its own `kind` and id; there is no merged project spec and no combined capability label. The routing consequence is derived while reading: structure comes from an installed Layout or Deck, identity from an installed Brand or Deck, direction from an installed Style. A project-local Brand + Layout pair therefore has both capabilities installed without being promoted into a reusable library Deck or inventing application context. The current project's Stage-1 communication contract supplies that context. Strategist derives the template application plan internally; confirmation exposes the editable natural-language plan, not internal reuse/adherence mode controls.
 
 ```yaml
 # templates/brands/anthropic/templates/design_spec.md
@@ -110,7 +110,7 @@ Imported vectors use `data-icon="imported/<name>"` and have one canonical file
 at `icons/imported/<name>.svg`. Workspace-aware validation and export resolve
 that root path directly; `templates/icons/` is not part of the package shape.
 
-PPTX import uses a two-level metadata model. The temporary lossless SVG keeps native-shape metadata, hidden carriers, and preview evidence as immutable payload backing; `svg_authoring_view.py` creates the editable authoring IR bundle, whose lightweight SVGs carry document-local source refs and whose manifest stores only paths and initial hashes. Authored modes use project-canonical SVG and compact authored-preset groups only for exact registered preset matches. Mirror materializes templates from the IR and reuses converter-supported payload only for unchanged Slide-local/slot refs; fixed structural layers remain direct atoms, unsupported or edited objects keep their SVG fallback, and final templates contain no IR-only refs. Export compiles only the declared SVG structure and never infers ownership.
+PPTX import uses a two-level metadata model. The temporary lossless SVG keeps native-shape metadata, hidden carriers, and preview evidence as immutable source/package evidence; `svg_authoring_view.py` creates the editable authoring IR bundle, whose lightweight SVGs carry document-local source refs and whose manifest stores only paths and initial hashes. Authored modes use project-canonical SVG and compact authored-preset groups only for exact registered preset matches. Mirror publishes the reviewed current IR as its visible tree; source refs validate identity and recover only supported non-visible semantics, fixed structural layers remain direct atoms, unsupported or edited objects keep their SVG fallback, and final templates contain no IR-only refs. Export compiles only the declared SVG structure and never infers ownership.
 
 Both scopes retain their selected `kind` in portable frontmatter. `output_scope` and `target_project` stay in the workflow brief and are not persisted into `design_spec.md`.
 
@@ -135,10 +135,14 @@ serves, the audience outcomes it supports, and representative narrative/page
 roles. Identity and structure are integrated around that context, while the
 current Strategist decides which prototypes and content to use.
 
-`standard` / `fidelity` author a new complete system from confirmed evidence;
-mirror maps validated source identities and parentage one-to-one into a new
-workspace. Mirror preserves source facts but does not prove that the source is
-a reusable Deck: creation still has to identify the stable application rules.
+`standard` / `fidelity` inspect the full confirmed source inventory and author a
+new complete system. Mirror emits one complete prototype per source Slide and
+preserves only that Slide roster plus each Slide's reachable Layout/Master
+parentage; source Layouts or Masters that no source Slide reaches are outside
+the mirror contract. Authored modes may re-author useful unreferenced source
+structures as new complete Slide prototypes. Mirror preserves those in-scope
+source facts but does not prove that the source is a reusable Deck: creation
+still has to identify the stable application rules.
 A source that yields only identity becomes Brand; reusable method and visual
 direction without prototypes becomes Style; a brand-neutral reusable structure
 becomes Layout; a branded structural system or scenario-bearing content grammar
@@ -413,7 +417,8 @@ ownership.
 ### Segment ownership is resolved while reading
 
 The consuming role — Default final Stage 2, or Quick's agent before authoring —
-reads every installed spec and resolves these segments in context:
+reads every installed spec and, when Layout/Deck owns structure, every installed
+SVG prototype, then resolves these segments in context:
 
 | Segment | Starting owner |
 |---|---|
@@ -479,11 +484,8 @@ exact root starts in template mode. Exactly one supplied root is preselected,
 while multiple roots remain unselected candidates. A bare template/brand name
 or style phrase never resolves to or preselects a workspace. For every selected
 root, the post-confirmation apply stage resolves either one library bare spec or
-all project-qualified specs; for directory-shape compatibility, it also accepts
-a legacy-flat Brand/Layout/Deck root containing
-`<workspace>/design_spec.md` when the package satisfies its current kind
-contract. Layout/Deck additionally require current structured SVGs; Style has
-no flat form. Packages using legacy semantics such as
+all project-qualified specs. Flat-root packages are not template workspaces.
+Packages using legacy semantics such as
 `native_structure_mode: template`, missing Master identity, direct atomic
 placeholders, or distillation-era markers are rejected; `create-template` must
 produce a new workspace before generation continues. The `kind` field decides
@@ -502,7 +504,24 @@ Bitmaps share the workspace `images/` pool and template SVGs reference them thro
 
 ### Strategist confirmation stage behavior per kind
 
-Installing a template does not narrow away the communication question. Stage 1 confirms the same open communication contract together with, but independently from, the template choice. The communication recommendation uses only the current request, source facts, conversation constraints, and project initialization; even template canvas is excluded. Only after Stage 1 closes and any selection is installed does final Stage 2 inspect that state and confirm the complete solution and production plan. Brand supplies identity constraints while structure stays free; Style supplies method and visual-default seeds while remaining flat; Layout exposes structural capability; Deck contributes descriptive reusable application context for comparison, not the current project's contract. For Style-only use, Strategist does not look for prototypes and deterministically records `template_reuse_scope: style` with flat structure. It otherwise inspects the effective prototypes—Layout when present, otherwise Deck—and current content, then authors one page/prototype plan and records `mirror`, `layout`, or `style` only as internal exporter values. A mirror-authored workspace therefore enables literal reuse but never forces it. Confirm UI exposes Free design / Use templates and candidate selectors, but not internal reuse/adherence fields. Planning semantics live in `references/strategist.md` and `references/strategist-template.md`; `templates/schemas/spec_lock.schema.json` owns the machine structure.
+Installing a template does not narrow away the communication question. Stage 1 confirms the same open communication contract together with, but independently from, the template choice. The communication recommendation uses only the current request, source facts, conversation constraints, and project initialization; even template canvas is excluded. Only after Stage 1 closes and any selection is installed does final Stage 2 inspect that state and confirm the complete solution and production plan. Brand supplies identity constraints while structure stays free; Style supplies method and visual-default seeds while remaining flat; Layout exposes structural capability; Deck contributes descriptive reusable application context for comparison, not the current project's contract. For Style-only use, Strategist does not look for prototypes and deterministically records `template_reuse_scope: style` with flat structure. It otherwise inspects every effective prototype—Layout when present, otherwise Deck—and current content, then authors one page/prototype plan and records `mirror`, `layout`, or `style` only as internal exporter values. A mirror-authored workspace therefore enables literal reuse but never forces it.
+
+Default still presents three template-compliant design directions. The Recommended direction is the viable one that most fully expresses the resolved template context; the other two vary only dimensions left open by that context and the user. Quick materializes no candidate set and directly executes that same recommended-direction rule.
+
+Default confirms one natural-language `template_application` paragraph; Quick
+freezes the same decision only in active context. Explicit user wording wins,
+otherwise the agent decides from content and the complete SVG roster, with
+reference-led use as the fallback. Reference, augment-only, and
+replacement-only are descriptive patterns rather than fixed fields. Every
+prototype-specific exception names the exact SVG basename. Runtime choice does
+not change structural capability: free/Brand/Style-only output is flat, while
+Layout/Deck output preserves explicit Master/Layout/slot metadata unless the
+user explicitly requests visual-only use. Confirm UI exposes Free design / Use
+templates and the prose field, but not internal reuse/adherence fields. Planning
+semantics live in `references/strategist.md` and
+`references/strategist-template.md`; `templates/schemas/spec_lock.schema.json`
+owns the durable Default machine structure, while Quick validates the all-page
+SVG structure contract directly.
 
 ---
 
