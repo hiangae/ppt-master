@@ -27,6 +27,7 @@ import argparse
 import filecmp
 import json
 import os
+import stat
 import re
 import shutil
 import subprocess
@@ -105,6 +106,31 @@ DEFERRED_CANVAS_MESSAGE = (
 )
 
 
+def _is_project_tree(source_path: Path) -> bool:
+    """Return whether a file under projects/ sits inside an initialized project.
+
+    A sibling directory such as ``projects/<slug>_web_sources/`` (topic-research
+    output) is scratch material, not another project's tree.
+    """
+    projects_root = PROJECTS_ROOT.resolve()
+    source_path = source_path.resolve()
+    try:
+        relative = source_path.relative_to(projects_root)
+    except ValueError:
+        return False
+    if not relative.parts:
+        return False
+    for root in source_path.parents:
+        if root == projects_root:
+            break
+        if any(
+            (root / marker).exists()
+            for marker in ("svg_output", "design_spec.md", "spec_lock.md", "README.md")
+        ):
+            return True
+    return False
+
+
 def _validate_image_manifest(
     payload: object,
     path: Path,
@@ -163,6 +189,12 @@ def _read_existing_image_manifest(path: Path) -> list[dict]:
 
 def _write_json_atomic(path: Path, payload: object) -> None:
     """Write JSON through a same-directory temporary file and atomic rename."""
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     fd, temp_name = tempfile.mkstemp(
         prefix=f"{path.stem}.",
         suffix=".tmp",
@@ -172,6 +204,8 @@ def _write_json_atomic(path: Path, payload: object) -> None:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
+        # mkstemp creates 0600; keep the file's own (or the default) mode.
+        os.chmod(temp_name, mode)
         os.replace(temp_name, path)
     except Exception:
         try:
@@ -281,7 +315,9 @@ class ProjectManager:
             # full project dir name pasted back into init) is used as-is —
             # re-appending would produce
             # `name_ppt169_20260101_ppt169_20260102`.
-            if re.search(rf"_{re.escape(normalized_format)}_\d{{8}}$", project_name):
+            if re.search(r"_\d{8}$", project_name):
+                # `_<format>_<YYYYMMDD>` or a plain `_<YYYYMMDD>`: the caller
+                # pinned the directory name; --format still sets the canvas.
                 project_dir_name = project_name
             else:
                 project_dir_name = f"{project_name}_{normalized_format}_{date_str}"
@@ -793,6 +829,7 @@ class ProjectManager:
             "notes": [],
             "skipped": [],
         }
+        moved_web_sources: dict[Path, Path] = {}
 
         expanded_items: list[str] = []
         supplied_dirs: list[Path] = []
@@ -851,7 +888,20 @@ class ProjectManager:
 
             source_path = Path(item)
             if not source_path.exists():
-                summary["skipped"].append(f"{item}: path not found")
+                moved_home = next(
+                    (
+                        moved
+                        for origin, moved in moved_web_sources.items()
+                        if is_within_path(source_path, origin)
+                    ),
+                    None,
+                )
+                if moved_home is not None:
+                    summary["notes"].append(
+                        f"{item}: already imported with its research pair under {moved_home}"
+                    )
+                else:
+                    summary["skipped"].append(f"{item}: path not found")
                 continue
             if source_path.is_dir():
                 summary["skipped"].append(f"{item}: directories are not supported")
@@ -865,6 +915,7 @@ class ProjectManager:
                 inside_projects
                 and not is_within_path(source_path, project_dir.resolve())
                 and source_path.resolve().parent != PROJECTS_ROOT.resolve()
+                and _is_project_tree(source_path)
             )
             if copy:
                 effective_move = False
@@ -903,6 +954,7 @@ class ProjectManager:
                     )
                     continue
 
+                web_sources = source_path.with_name(f"{source_path.stem}_web_sources")
                 archived_markdown, asset_dir, note = self._import_markdown_with_assets(
                     source_path,
                     sources_dir,
@@ -910,6 +962,24 @@ class ProjectManager:
                 )
                 summary["archived"].append(str(archived_markdown))
                 summary["markdown"].append(str(archived_markdown))
+                if (
+                    effective_move
+                    and web_sources.is_dir()
+                    and web_sources.resolve().parent == PROJECTS_ROOT.resolve()
+                ):
+                    # topic-research fetches pages beside its pair under
+                    # projects/; they travel with the pair as provenance
+                    # rather than staying behind in the shared directory.
+                    target = project_dir / "analysis" / "research_web_sources" / web_sources.name
+                    if target.exists():
+                        summary["notes"].append(
+                            f"{web_sources}: left in place; {target} already exists"
+                        )
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(web_sources), str(target))
+                        summary["analysis"].append(str(target))
+                        moved_web_sources[web_sources] = target
                 if asset_dir is not None:
                     summary["assets"].append(str(asset_dir))
                     self._propagate_image_assets(asset_dir, project_dir)
@@ -1125,7 +1195,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init = subparsers.add_parser("init", help="Create a project directory")
-    init.add_argument("project_name", help="Project name")
+    init.add_argument(
+        "project_name",
+        help="Project name; the directory becomes <name>_<YYYYMMDD>, or "
+             "<name>_<format>_<YYYYMMDD> with --format. A name already ending "
+             "in _<YYYYMMDD> is used as-is.",
+    )
     init.add_argument(
         "--format",
         default=None,

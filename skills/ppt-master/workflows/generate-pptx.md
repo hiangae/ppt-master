@@ -36,7 +36,7 @@ description: Default Generate PPTX authority for source intake, planning, SVG au
 | User provides | Action |
 |---|---|
 | PDF / DOCX / Office document / XLSX / XLSM / PPTX / EPUB / HTML / LaTeX / RST / web URL | `python3 ${SKILL_DIR}/scripts/source_to_md.py <file_or_URL_or_dir> [<file_or_URL_or_dir> ...]` |
-| CSV / TSV | Read directly as a plain-text table source |
+| CSV / TSV | Read directly as a plain-text table source; a wide public dataset (World Bank, OECD, Eurostat) is first sliced to the needed rows and columns with a short Python snippet, never read whole |
 | Markdown | Read directly |
 | Topic only | Run [`topic-research`](stages/topic-research.md) first and use its research pair as source; Step 2 imports the pair without expanding the facts JSON's URLs |
 
@@ -63,7 +63,7 @@ python3 ${SKILL_DIR}/scripts/project_manager.py import-sources <project_path> <s
 
 **Workflow log**: initialization creates `<project_path>/validation/workflow.log`; later project-scoped Python tools record their command envelopes there automatically (prefix `PPT_MASTER_PROJECT_PATH="<project_path>"` when a helper's arguments do not identify the project). Append one concise note with `python3 ${SKILL_DIR}/scripts/workflow_log.py <project_path> "<detail>"` only for a material handoff, rework reason, approved exception, or manual recovery with no owning command output. The log is cold audit evidence, never read during generation.
 
-**Import rules**: pass the source path once when Step 1 wrote Markdown beside it, both locations when `-o` wrote it elsewhere, and only the research pair when Topic Research ran (its facts JSON is imported as a file; no URL is fetched). Copy/move semantics, bitmap archiving, and the PPTX intake bundle it writes under `analysis/` (`<stem>.identity.json`, `<stem>.slide_library.json`, `source_profile.json`) are [`project.md`](../scripts/docs/project.md). Those artifacts are source facts and recommendation candidates, not replica constraints; Beautify stays single-deck.
+**Import rules**: pass the source path together with the Markdown Step 1 wrote beside it (a same-stem Markdown suppresses re-conversion and is imported with its sidecar and assets; the source alone is archived and converted again), both locations when `-o` wrote it elsewhere, and only the research pair when Topic Research ran (its facts JSON is imported as a file; no URL is fetched). Copy/move semantics, bitmap archiving, and the PPTX intake bundle it writes under `analysis/` (`<stem>.identity.json`, `<stem>.slide_library.json`, `source_profile.json`) are [`project.md`](../scripts/docs/project.md). Those artifacts are source facts and recommendation candidates, not replica constraints; Beautify stays single-deck.
 
 **✅ Checkpoint** — project created, `sources/` complete, converted materials ready. `import-sources` exits 0 when any input converts: read the printed `skipped` reasons and treat those inputs as absent. Proceed to Step 3.
 
@@ -196,7 +196,7 @@ Read ${SKILL_DIR}/references/image-base.md          # always
 | Row | Additional reference | Run |
 |---|---|---|
 | Prepared derivative | `image-generator.md` §4.4 only for registered layers | after its canonical source is terminal: `python3 ${SKILL_DIR}/scripts/image_treat.py ...` for blur, desaturation/grayscale, duotone, brightness, contrast, or `--fit WxH` downscaling to the planned size, or the §4.4 preparation path |
-| `ai` | `image-generator.md` | write `images/image_prompts.json`, render `image_prompts.md` with `image_gen.py --render-md`, then follow §7 Path Selection — `image_gen.py --manifest` is Path A only, `host-native` is Path B and skips `--manifest`, `manual` writes prompts and stops; the recorded `design_spec.md §I` path wins over `IMAGE_BACKEND` |
+| `ai` | `image-generator.md` | write `images/image_prompts.json`, render `image_prompts.md` with `image_gen.py --render-md images/image_prompts.json`, then follow §7 Path Selection — `image_gen.py --manifest` is Path A only, `host-native` is Path B and skips `--manifest`, `manual` writes prompts and stops; the recorded `design_spec.md §I` path wins over `IMAGE_BACKEND` |
 | `web` | `image-searcher.md` | `python3 ${SKILL_DIR}/scripts/image_search.py ...`; with ≥2 rows write `images/image_queries.json` and run `--batch` once |
 | `slice` | `image-generator.md` §4.3 | after the parent sheet is `Generated`: `python3 ${SKILL_DIR}/scripts/slice_images.py <project_path>/images/<sheet>.png --grid RxC --names ... --trim --alpha --bg KEY_HEX_FROM_PROMPT --strict-alpha` |
 | `user` / `placeholder` | — | skip |
@@ -259,7 +259,7 @@ Read the core as one batch with the exact detail files named by the retained `sp
 python3 ${SKILL_DIR}/scripts/svg_editor/server.py <project_path> --live --daemon
 ```
 
-Default first free port from `6060` (`--port N` binds strictly); read the URL from output or `<project_path>/live_preview/lock.json` and report it — or the launch failure — before the first SVG. It is a side process: never wait for it or for user confirmation, and keep it running until the user clicks **Exit preview** or asks in chat. Do not read or apply submitted annotations during generation; that window opens after Step 7 ([`live-preview.md`](stages/live-preview.md), which also describes staged direct edits).
+Default first free port from `6060` (`--port N` binds strictly); read the URL from output or `<project_path>/live_preview/lock.json` and report it — or the launch failure, or that the user or run instructions forbade starting it — before the first SVG. It is a side process: never wait for it or for user confirmation, and keep it running until the user clicks **Exit preview** or asks in chat. Do not read or apply submitted annotations during generation; that window opens after Step 7 ([`live-preview.md`](stages/live-preview.md), which also describes staged direct edits).
 
 **Cadence (Mandatory)**: P01–P05 → early gate (a planned roster of six or fewer pages skips it) → remaining pages → final gate, in one context. Every checker invocation follows one of two events: a gate point whose covered pages all exist, or the end of one consolidated repair pass. A run with neither predecessor is a pacing violation; validating an authoring pattern early is not a reason, because the same issues surface at the gate and are fixed in the same pass. Reload under Context validity above after context invalidation.
 
@@ -279,7 +279,7 @@ python3 ${SKILL_DIR}/scripts/svg_quality_checker.py <project_path> \
   --canonical-authoring --stage early --json
 ```
 
-`--json` writes the report file (`validation/svg_quality_early_report.json`); stdout stays the human-readable summary and is never parsed as JSON. The stage checks every authored page so far under the partial-roster rules. Repair under the consolidated-pass discipline in [`executor-base.md`](../references/executor-base.md) §3; a still-failing verification is the next batch. If terminal output is truncated, read only the issue arrays from `validation/svg_quality_early_report.json`. The gate validates the method, not just the pages — emit one line before editing:
+`--json` writes the report file (`validation/svg_quality_early_report.json`); stdout stays the human-readable summary and is never parsed as JSON. The stage checks every authored page so far under the partial-roster rules. Repair under the consolidated-pass discipline in [`executor-base.md`](../references/executor-base.md) §3; a still-failing verification is the next batch. If terminal output is truncated, extract only `categories.blocking.issues` (and `categories.introduced.issues` when needed) from `validation/svg_quality_early_report.json`. The gate validates the method, not just the pages — emit one line before editing (in the conversation, not to a file):
 
 ```
 gate-signal: method=<rule resolved, or none> | page-local=<count> | not-exercised=<list>
@@ -310,7 +310,7 @@ python3 ${SKILL_DIR}/scripts/svg_quality_checker.py <project_path> \
 
 **Logic Construction Phase (conditional)**: when the effective Speaker Notes outcome in §I is enabled, load [`executor-notes.md`](../references/executor-notes.md): validate a frozen `notes/total.md` against every information-bearing final SVG group (repair the page or the plan, never the script), or otherwise ground each page's narration in its final SVG and write `notes/total.md`. When disabled, load nothing and create no notes.
 
-**✅ Internal checkpoint** — preview launched in time, P01 method gate, uninterrupted remaining pages, consolidated repair, exact §IX coverage, one-frame prose, final checker 0 errors, `notes/total.md` only when enabled. Do not print. Then run the applicable conditional gates and proceed to Step 7.
+**✅ Internal checkpoint** — preview launched in time, early gate after P05 (skipped on a roster of six or fewer pages), uninterrupted remaining pages, consolidated repair, exact §IX coverage, one-frame prose, final checker 0 errors, `notes/total.md` only when enabled. Do not print. Then run the applicable conditional gates and proceed to Step 7.
 
 > **Chart pages?** Run [`verify-charts`](stages/verify-charts.md) before Step 7 to calibrate coordinates; skip without chart pages.
 >
@@ -353,7 +353,8 @@ python3 ${SKILL_DIR}/scripts/finalize_svg.py <project_path>
 
 | Decision | Flag |
 |---|---|
-| Explicit editable Chart/Table delivery decision | Append `--native-charts-and-tables` (markers, templates, semantic tables, and imported charts never activate it; formulas are always native) |
+| Explicit editable Chart/Table delivery decision, or a structured `chart` / `table` placeholder slot | Append `--native-charts-and-tables` (markers, templates, semantic tables, and imported charts never activate it; formulas are always native) |
+| Final checker reports oversized images | Append `--image-sizing display` |
 | Preserved or produced `animations.json` | Keep the base command; the exporter reads the sidecar |
 | Deck-wide motion setting | Append the resolved [`animations.md`](../references/animations.md) flags |
 | Explicit Custom Animations disable | Keep the sidecar and append `-a none` |
@@ -364,6 +365,10 @@ python3 ${SKILL_DIR}/scripts/finalize_svg.py <project_path>
 Sound: the optional post-motion pass is [`animations.md`](../references/animations.md) §2.2. For a narrated MP4, [`generate-audio`](stages/generate-audio.md) owns the delivery choice.
 
 **Success criterion**: the command exits 0 and produces `exports/<project_name>_<timestamp>.pptx`, `validation/<project_name>_<timestamp>.report.json` with `passed` or `passed-with-warnings`, and `validation/<project_name>_<timestamp>.trace.json` when `--conversion-trace` was enabled. The exporter itself requires the current matching `final` quality report and exits nonzero on a missing, unreadable, unsupported, non-final, blocking, stale, or unverifiable one. Read the compact `[POSTFLIGHT]` receipt (`status`, `quality_gate`, slide count, warning counts, paths), disclose material warnings, and never `cat` the full report on success. Retain the report path for a later `deck_motion` handoff; postflight proves the package, not a later MP4 audio track.
+
+### Revision Round (delivered project)
+
+A delivered project that comes back with a change stays in this route; planning does not restart. Act at the owning layer. A wording change, an added condition, or a re-titled page edits the SVG, then its §IX block, `notes/total.md`, and every page that repeats the line (a chapter page's route, the contents page). A page inserted, dropped, or moved renumbers the roster first — files, footers, contents-page numbers, §IX blocks, `page_rhythm` / `page_visualizations` rows, `animations.json` keys, `notes/total.md` headings — then authors or removes the page; whatever the moved page carried moves with it: a Morph `from` names the new preceding page and a "next chapter" preview group follows its boundary. A deck-wide colour or family runs [`update_spec.py`](../scripts/docs/update_spec.md); derived tints, pages designed around the old value, and spec prose naming it are edited by hand, and a hand-edited Chart/Table fallback is re-stamped before the gate. Rerun the final quality gate (it compares §IX with `svg_output/`), `animation_config.py validate`, 7.1 when notes changed, 7.2, and 7.3; calibration, the early gate, and `verify-charts` return only when a type role, the first pages, or a chart's geometry changed. Earlier exports stay; the new ones carry their own timestamp.
 
 ## ✅ Generate PPTX Complete
 

@@ -44,8 +44,8 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
-import webbrowser
 from pathlib import Path
 from typing import Optional
 
@@ -67,6 +67,7 @@ from server_common import (  # noqa: E402
     clear_lock as _clear_lock,
     find_free_port as _find_free_port,
     lock_pid as _lock_pid,
+    open_preview_browser,
     popen_detached as _popen_detached,
     process_alive as _process_alive,
     read_lock as _read_lock,
@@ -1133,7 +1134,7 @@ def _launch_background_server(
     url = _server_url(port)
     logger.info('started confirm UI in background: %s (pid=%s)', url, server_pid)
     if open_browser:
-        webbrowser.open(url)
+        open_preview_browser(url, logger=logger)
     return proc, port, log_path
 
 
@@ -1161,7 +1162,7 @@ def _open_browser_async(url: str, delay: float = 0.4) -> None:
     """Open the browser after Flask has had a moment to bind its socket."""
     def _open() -> None:
         time.sleep(delay)
-        webbrowser.open(url)
+        open_preview_browser(url, logger=logger)
 
     threading.Thread(target=_open, daemon=True).start()
 
@@ -2527,6 +2528,20 @@ def create_app(
 
     @app.before_request
     def _update_activity():
+        allowed_hosts = {PUBLIC_HOST, 'localhost', '::1', '[::1]'}
+        host = request.headers.get('Host', '').lower()
+        if host.startswith('[') or host.count(':') == 1:
+            host = re.sub(r':\d+$', '', host)
+        if host not in allowed_hosts:
+            return jsonify({'error': 'Forbidden Host header'}), 403
+        origin = request.headers.get('Origin')
+        if origin is not None:
+            try:
+                origin_host = urllib.parse.urlsplit(origin).hostname
+            except ValueError:
+                origin_host = None
+            if origin_host not in allowed_hosts:
+                return jsonify({'error': 'Forbidden Origin header'}), 403
         app.config['LAST_REQUEST_TIME'] = time.time()
 
     def _exit_with_lock_release(code: int = 0) -> None:
@@ -3108,7 +3123,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 logger.error('%s', exc)
                 return 1
             if actual_port != recovery_port and not args.no_browser:
-                webbrowser.open(_server_url(actual_port))
+                open_preview_browser(_server_url(actual_port), logger=logger)
             logger.info(
                 'recovered confirm UI for wait-only at %s; the browser polling should resume',
                 _server_url(actual_port),

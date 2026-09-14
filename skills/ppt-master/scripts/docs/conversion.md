@@ -61,8 +61,10 @@ Useful options:
   `--no-images`, and `--filter-images` map to the PDF image mode.
   `--no-images` (or `--images none`) also applies to web pages (images stay
   remote links, no `<stem>_files/`) and is a no-op on Markdown/text.
-- A `.md` / `.markdown` / `.txt` URL whose body is not HTML is saved verbatim
-  under a `Source:` header, named by the URL's filename stem.
+- A URL that serves a PDF / Office document (by Content-Type, body magic, or
+  suffix) is saved beside the Markdown and converted by that document's
+  backend; a `.md` / `.txt` URL whose body is not HTML is saved verbatim
+  under a `Source:` header, named by the URL stem.
 - Unknown backend-specific flags are passed through to each selected converter.
 - `-o/--output` selects one Markdown file for one input, or an output directory
   for multiple inputs / directory inputs.
@@ -112,12 +114,14 @@ Dependency:
 pip install PyMuPDF
 ```
 
+PyMuPDF is licensed under AGPL-3.0, with a commercial license available from Artifex. It is the only AGPL dependency in this repository and is imported only by this converter, so it can be left uninstalled when no PDF sources are involved. Anyone redistributing PPT Master together with its installed dependencies should review the AGPL terms first.
+
 ## `source_to_md/doc_to_md.py`
 
 Hybrid converter: pure-Python for the common formats, pandoc fallback for the rest.
 
 Native path (no external binary required):
-- `.docx` — via `mammoth`; text-only tables are preserved as pipe Markdown, and OMML / Office Math equations (Word-native or MathType "Convert to Office Math") are rewritten to inline LaTeX. Classic MathType OLE objects carry no OMML and are kept only as their preview image.
+- `.docx` — via `mammoth`; text-only tables (with footnotes) and chart data become pipe Markdown, and OMML / Office Math equations (Word-native or MathType "Convert to Office Math") are rewritten to inline LaTeX. Classic MathType OLE objects carry no OMML and are kept only as their preview image.
 - `.html` / `.htm` — via `markdownify` + `beautifulsoup4`
 - `.epub` — via `ebooklib` + `markdownify`
 - `.ipynb` — via `nbconvert`
@@ -619,6 +623,9 @@ Error: PPTX-to-SVG conversion failed: Invalid DrawingML sRGB color structure
 
 Convert web pages to Markdown and download images locally by default. Use
 `--no-images` to retain remote image links without downloading their files.
+Pages, images, and redirect targets must be public HTTP(S) hosts with valid
+TLS; `--insecure` skips certificate checks, `--allow-private-hosts` admits
+intranet and loopback addresses.
 
 ```bash
 python3 scripts/source_to_md/web_to_md.py https://example.com/article
