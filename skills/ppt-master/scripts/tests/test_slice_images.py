@@ -120,6 +120,8 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=False,
             )
 
@@ -130,7 +132,7 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
             self.assertIn("--bg #57B265 --tolerance 12", result.stderr)
             self.assertFalse((output_dir / "element.png").exists())
 
-    def test_strict_alpha_names_edge_wide_near_key_noise_as_key_noise(self) -> None:
+    def test_strict_alpha_retries_once_when_every_finding_is_key_noise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             sheet_path = root / "sheet.png"
@@ -163,14 +165,18 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=False,
             )
 
-            self.assertEqual(result.returncode, 1)
-            self.assertIn("this is key noise", result.stderr)
+            # Every finding is measured key noise, so the tool retries once
+            # with the tolerance it measured instead of asking for a rerun.
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("key noise", result.stderr)
+            self.assertIn("auto-retrying once with --tolerance", result.stderr)
             self.assertNotIn("content reaches the", result.stderr)
-            self.assertIn("Suggested rerun:", result.stderr)
-            self.assertFalse((output_dir / "element.png").exists())
+            self.assertTrue((output_dir / "element.png").exists())
 
     def test_inset_accepts_horizontal_and_vertical_fractions(self) -> None:
         from slice_images import parse_inset
@@ -203,7 +209,7 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
                     "--bg", "#0000FF", "--inset", "0,0.06",
                     "--output", str(output_dir),
                 ],
-                capture_output=True, text=True, check=False,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(Image.open(output_dir / "a.png").size, (381, 33))
@@ -230,7 +236,7 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
             ]
             result = subprocess.run(
                 args + ["--bg", "#0000FF", "--tolerance", "62"],
-                capture_output=True, text=True, check=False,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             )
             self.assertEqual(result.returncode, 1)
             self.assertIn("semi-transparent", result.stderr)
@@ -239,7 +245,7 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
 
             result = subprocess.run(
                 args + ["--bg", "#034AF4", "--tolerance", "62"],
-                capture_output=True, text=True, check=False,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(Image.open(output_dir / "mark.png").size, (41, 41))
@@ -267,7 +273,7 @@ class SliceImagesDiagnosticsTests(unittest.TestCase):
                     "--bg", "#0000FF", "--inset", "0.05",
                     "--output", str(output_dir),
                 ],
-                capture_output=True, text=True, check=False,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             )
             self.assertEqual(result.returncode, 1)
             self.assertIn("painted backing panel", result.stderr)
