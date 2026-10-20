@@ -13,9 +13,11 @@
 
 [English](./README.md) | 中文
 
+> 🆕 **作为投融资领域从业者（注册会计师 · 资产评估师 · 咨询工程师（投资）），我结合自己的专业知识和项目经验，制作了一个工具网站：[建设项目经济评价](https://cs.hehugo.com/)**——输入项目数据，在线完成全套财务测算：投资、收入、成本、还本付息、利润、现金流量、资产负债等报表，以及内部收益率、净现值、敏感性和盈亏平衡分析，可导出 Excel / Word 报表。适用于风电、光伏、储能等能源类建设项目，其他项目可用通用型评价。网站目前处于初步试用阶段，前 100 名注册送 3 次运算，之后注册送 1 次。
+
 ## ❤️ 赞助
 
-本项目由 <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>、<a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>、<a href="https://apikey.fan/register?aff=PPT-MASTER">APIKEY.FAN</a>、<a href="https://runapi.host/register?aff=WMLJ">RunAPI</a>、<a href="https://go.apimart.ai/gh-ppt-master1">APIMart</a> 等赞助方支持，得以持续免费开源。
+本项目由 <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>、<a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>、<a href="https://apikey.fan/register?aff=PPT-MASTER">APIKEY.FAN</a>、<a href="https://runapi.host/register?aff=WMLJ">RunAPI</a> 等赞助方支持，得以持续免费开源。
 
 > **[想出现在这里？](SPONSORING_CN.md)**
 
@@ -44,10 +46,6 @@
   <tr>
     <td width="180"><a href="https://runapi.host/register?aff=WMLJ"><img src="docs/assets/sponsors/runapi.png" alt="RunAPI" width="150"></a></td>
     <td>感谢 RunAPI 赞助了本项目！RunAPI 是一个高效稳定的 API 平台，一个 API Key 即可访问 OpenAI、Claude、Gemini、DeepSeek、Grok 等 150+ 主流模型，价格低至官方原价的 <strong>1 折</strong>，极其稳定，可无缝兼容 Claude Code 等工具。RunAPI 为 PPT Master 用户提供专属福利：通过<a href="https://runapi.host/register?aff=WMLJ">本项目专属链接</a>注册并联系管理员，即可领取 <strong>￥7 的免费额度</strong>。</td>
-  </tr>
-  <tr>
-    <td width="180"><a href="https://go.apimart.ai/gh-ppt-master1"><img src="docs/assets/sponsors/apimart.png" alt="APIMart" width="150"></a></td>
-    <td>感谢 APIMart 赞助了本项目！APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 <strong>$0.006/张</strong>，1 美元可出图 160+ 张。图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。按量付费、无月费，通过<a href="https://go.apimart.ai/gh-ppt-master1">此注册链接</a>注册即可开用。</td>
   </tr>
 </table>
 
@@ -366,7 +364,7 @@ PPT Master 会优先读取当前进程环境变量，然后按顺序读取第一
 
 ## 贡献
 
-详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+详见 [CONTRIBUTING.md](./CONTRIBUTING.md)（英文）。
 
 ## 开源协议
 
@@ -419,8 +417,6 @@ PPT Master 目前主要由我开发维护。每个新模板、Bug 修复、文�
 &nbsp;
 <a href="https://runapi.host/register?aff=WMLJ"><img src="docs/assets/sponsors/runapi.png" alt="RunAPI" height="40" /></a>
 &nbsp;
-<a href="https://go.apimart.ai/gh-ppt-master1"><img src="docs/assets/sponsors/apimart.png" alt="APIMart" height="40" /></a>
-&nbsp;
 <a href="https://m.do.co/c/547f129aabe1"><img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/PoweredByDO/DO_Powered_by_Badge_blue.svg" alt="Powered by DigitalOcean" height="40" /></a>
 
 **[想出现在这里？→](SPONSORING_CN.md)** —— 展示位置、受众数据与价格。
@@ -432,6 +428,8 @@ PPT Master 目前主要由我开发维护。每个新模板、Bug 修复、文�
 <a href="https://paypal.me/hugohe3"><img src="https://img.shields.io/badge/PayPal-赞助-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="通过 PayPal 赞助" /></a>
 
 <img src="docs/assets/alipay-qr.jpg" alt="支付宝收款码" width="220" />
+
+> 🎁 支付宝赞助 100 元起（100 元的整数倍），付款时备注 [建设项目经济评价](https://cs.hehugo.com/) 网站的注册邮箱，即可获得该网站的计算点数。每 100 元对应 20 点（每次运算 1 点）。
 
 ---
 

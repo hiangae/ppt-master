@@ -13,9 +13,11 @@
 
 English | [中文](./README_CN.md)
 
+> 🆕 **As a finance professional (CPA · CPV · Consulting Engineer (Investment)), I drew on my expertise and project experience to build a tool website: [Construction Project Economic Evaluation](https://cs.hehugo.com/)** (in Chinese) — enter your project data and get a full financial evaluation online: investment, revenue, cost, debt service, profit, cash flow and balance sheet statements, plus IRR, NPV, sensitivity and break-even analysis, exportable to Excel / Word. Built for energy projects such as wind, solar and storage, with a general-purpose mode for other projects. The site is in an early trial phase; the first 100 accounts get 3 free runs, later accounts get 1.
+
 ## ❤️ Sponsors
 
-This project is kept free and open source with the support of <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>, <a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>, <a href="https://apikey.fan/register?aff=PPT-MASTER">APIKEY.FAN</a>, <a href="https://runapi.host/register?aff=WMLJ">RunAPI</a>, <a href="https://go.apimart.ai/gh-ppt-master1">APIMart</a> and other sponsors.
+This project is kept free and open source with the support of <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>, <a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>, <a href="https://apikey.fan/register?aff=PPT-MASTER">APIKEY.FAN</a>, <a href="https://runapi.host/register?aff=WMLJ">RunAPI</a> and other sponsors.
 
 > **[Want to appear here?](SPONSORING.md)**
 
@@ -44,10 +46,6 @@ Thanks to [Kimi](https://www.kimi.com/code/?aff=ppt-master) for sponsoring this 
   <tr>
     <td width="180"><a href="https://runapi.host/register?aff=WMLJ"><img src="docs/assets/sponsors/runapi.png" alt="RunAPI" width="150"></a></td>
     <td>Thanks to RunAPI for sponsoring this project! RunAPI is an efficient and stable API platform — a single API Key gives you access to 150+ leading models, including OpenAI, Claude, Gemini, DeepSeek, and Grok, at prices as low as <strong>10% of official rates</strong>, with exceptional stability and seamless compatibility with tools like Claude Code. RunAPI offers an exclusive perk for PPT Master users: register and contact an administrator via <a href="https://runapi.host/register?aff=WMLJ">our dedicated link</a> to claim <strong>¥7 in free credit</strong>.</td>
-  </tr>
-  <tr>
-    <td width="180"><a href="https://go.apimart.ai/gh-ppt-master1"><img src="docs/assets/sponsors/apimart.png" alt="APIMart" width="150"></a></td>
-    <td>Thanks to APIMart for sponsoring this project! APIMart is a low-cost API platform for AI image & video generation — GPT-Image-2 from <strong>$0.006/image</strong>, 160+ images per dollar. One async API covers both image and video: submit a task, get an ID, fetch results via polling or callback. Batch tens of thousands of images without timeouts, switch models without changing code. Pay-as-you-go with no monthly fee — sign up <a href="https://go.apimart.ai/gh-ppt-master1">here</a> to get started.</td>
   </tr>
 </table>
 
@@ -414,8 +412,6 @@ PPT Master is currently built and maintained primarily by me. Every new template
 &nbsp;
 <a href="https://runapi.host/register?aff=WMLJ"><img src="docs/assets/sponsors/runapi.png" alt="RunAPI" height="40" /></a>
 &nbsp;
-<a href="https://go.apimart.ai/gh-ppt-master1"><img src="docs/assets/sponsors/apimart.png" alt="APIMart" height="40" /></a>
-&nbsp;
 <a href="https://m.do.co/c/547f129aabe1"><img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/PoweredByDO/DO_Powered_by_Badge_blue.svg" alt="Powered by DigitalOcean" height="40" /></a>
 
 **[Want to appear here? →](SPONSORING.md)** — placements, audience and rates.
@@ -427,6 +423,8 @@ If PPT Master has been helpful to you, individual support of any amount helps ke
 <a href="https://paypal.me/hugohe3"><img src="https://img.shields.io/badge/PayPal-Sponsor-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Sponsor via PayPal" /></a>
 
 <img src="docs/assets/alipay-qr.jpg" alt="Alipay QR Code" width="220" />
+
+> 🎁 Sponsor ¥100 or more (in multiples of ¥100) via Alipay and put the email you registered on [Construction Project Economic Evaluation](https://cs.hehugo.com/) in the payment note to receive compute credits on that site. Every ¥100 earns 20 credits (one run costs 1 credit).
 
 ---
 
