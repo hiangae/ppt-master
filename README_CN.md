@@ -13,7 +13,9 @@
 
 [English](./README.md) | 中文
 
-> 🆕 **作为投融资领域从业者（注册会计师 · 资产评估师 · 咨询工程师（投资）），我结合自己的专业知识和项目经验，制作了一个工具网站：[建设项目经济评价](https://cs.hehugo.com/)**——输入项目数据，在线完成全套财务测算：投资、收入、成本、还本付息、利润、现金流量、资产负债等报表，以及内部收益率、净现值、敏感性和盈亏平衡分析，可导出 Excel / Word 报表。适用于风电、光伏、储能等能源类建设项目，其他项目可用通用型评价。网站目前处于初步试用阶段，前 100 名注册送 3 次运算，之后注册送 1 次。
+> 💼 **我正在寻找新的发展机会。** 投融资背景（CPA · CPV · 咨询工程师），也做 AI 工具与开源产品，各类机会都欢迎交流：[heyug3@gmail.com](mailto:heyug3@gmail.com)，更多见 [hehugo.com](https://www.hehugo.com/)。
+
+> 🆕 **我做了一个建设项目经济评价网站：[cs.hehugo.com](https://cs.hehugo.com/)**——风光储模板现已向所有用户开放，注册即可使用（某商业软件同类模块售价 10 万元）。
 
 ## ❤️ 赞助
 
@@ -97,7 +99,7 @@
 在这份原生深度之上，这个形态还带来三个承诺：
 
 - **成本透明可控** — 工具免费开源，唯一成本是你自己的 AI 模型用量，不在此之外增加任何订阅费用
-- **数据不出本地** — 除与 AI 模型的对话外，全流程在你的电脑上完成
+- **数据不出本地** — 除与 AI 模型的对话及你主动启用的搜索、生图、语音服务外，全流程在你的电脑上完成
 - **不锁定平台** — 任何具备 agent 能力的 AI IDE 均可驱动；Claude、GPT、Gemini、Kimi 等模型均可使用
 
 为什么选它、以及它不适合的场景 → [为什么选 PPT Master](./docs/zh/why-ppt-master.md)；这些承诺背后的长期能力边界 → [项目定位与能力边界](./docs/zh/project-positioning.md)。
@@ -428,8 +430,6 @@ PPT Master 目前主要由我开发维护。每个新模板、Bug 修复、文�
 <a href="https://paypal.me/hugohe3"><img src="https://img.shields.io/badge/PayPal-赞助-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="通过 PayPal 赞助" /></a>
 
 <img src="docs/assets/alipay-qr.jpg" alt="支付宝收款码" width="220" />
-
-> 🎁 支付宝赞助 100 元起（100 元的整数倍），付款时备注 [建设项目经济评价](https://cs.hehugo.com/) 网站的注册邮箱，即可获得该网站的计算点数。每 100 元对应 20 点（每次运算 1 点）。
 
 ---
 

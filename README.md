@@ -13,7 +13,9 @@
 
 English | [中文](./README_CN.md)
 
-> 🆕 **As a finance professional (CPA · CPV · Consulting Engineer (Investment)), I drew on my expertise and project experience to build a tool website: [Construction Project Economic Evaluation](https://cs.hehugo.com/)** (in Chinese) — enter your project data and get a full financial evaluation online: investment, revenue, cost, debt service, profit, cash flow and balance sheet statements, plus IRR, NPV, sensitivity and break-even analysis, exportable to Excel / Word. Built for energy projects such as wind, solar and storage, with a general-purpose mode for other projects. The site is in an early trial phase; the first 100 accounts get 3 free runs, later accounts get 1.
+> 💼 **I'm open to new opportunities.** Investment background (CPA · CPV · Consulting Engineer), also building AI tools and open source. Happy to talk about any opportunity: [heyug3@gmail.com](mailto:heyug3@gmail.com) · [hehugo.com](https://www.hehugo.com/).
+
+> 🆕 **I built a construction project economic evaluation site: [cs.hehugo.com](https://cs.hehugo.com/)** (in Chinese) — the wind, solar and storage templates are now open to everyone; just register and use them (a comparable module in one commercial package sells for ¥100,000).
 
 ## ❤️ Sponsors
 
@@ -97,7 +99,7 @@ Generating a new deck from source documents is the main pipeline, but not the on
 On top of that native depth, this form comes with three promises:
 
 - **Transparent, predictable cost** — free and open source; the only cost is your AI model usage, with no PPT subscription on top
-- **Data stays local** — apart from AI model communication, the entire pipeline runs on your machine
+- **Data stays local** — apart from AI model calls and the search, image, and speech services you choose to enable, the entire pipeline runs on your machine
 - **No platform lock-in** — any agent-capable AI IDE can drive it; Claude, GPT, Gemini, Kimi, and other models all work
 
 Why you'd choose it, and where it isn't the right fit → [Why PPT Master](./docs/why-ppt-master.md); the long-term capability boundaries behind these promises → [Project Positioning](./docs/project-positioning.md).
@@ -423,8 +425,6 @@ If PPT Master has been helpful to you, individual support of any amount helps ke
 <a href="https://paypal.me/hugohe3"><img src="https://img.shields.io/badge/PayPal-Sponsor-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Sponsor via PayPal" /></a>
 
 <img src="docs/assets/alipay-qr.jpg" alt="Alipay QR Code" width="220" />
-
-> 🎁 Sponsor ¥100 or more (in multiples of ¥100) via Alipay and put the email you registered on [Construction Project Economic Evaluation](https://cs.hehugo.com/) in the payment note to receive compute credits on that site. Every ¥100 earns 20 credits (one run costs 1 credit).
 
 ---
 
