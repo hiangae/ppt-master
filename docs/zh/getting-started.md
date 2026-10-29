@@ -27,7 +27,7 @@
 | **工作目录** | 你在 Agent 中打开的、可持久保存且可写的目录 | 完整仓库 clone 或仓库 ZIP 通常使用仓库根目录；skill-only 安装则自行选择，不必是 skill 安装目录 |
 | **活动项目** | 一次生成任务的来源、SVG、报告、备份与导出物所在目录 | Agent 会在 `<工作目录>/projects/<生成的项目名>/` 下初始化，并报告精确路径 |
 
-所有安装方式都需要 Python 3.10+，以及一个已经安装和鉴权、能够读写工作目录并执行 shell 命令的 Agent host。完整仓库 clone 或仓库 ZIP 从仓库根目录安装依赖：
+所有安装方式都需要 Python 3.10–3.14，以及一个已经安装和鉴权、能够读写工作目录并执行 shell 命令的 Agent host。完整仓库 clone 或仓库 ZIP 从仓库根目录安装依赖：
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -185,7 +185,7 @@ PPT Master 最初是纯对话设计;可视化编辑是在很多用户提出后�
 | 情况 | 先试这个 |
 |---|---|
 | AI 跑偏或漏了步骤 | 让它重新读 `skills/ppt-master/SKILL.md`、`skills/ppt-master/workflows/routing.md` 和已选路线的权威文档。 |
-| 视觉质量不理想 | 换成大上下文 Claude 模型 + `gpt-image-2`——harness 决定下限,模型决定上限。 |
+| 视觉质量不理想 | 换成大上下文 Claude 模型 + `gpt-image-2.5-sunburst`——harness 决定下限,模型决定上限。 |
 | 文字溢出或元素重叠 | 重跑那一页,或用实时预览修;详见 [FAQ](./faq.md)。 |
 | 没有生图 API key | Agent host 提供原生生图时直接使用,否则零配置网络图片搜索仍可用;见 [FAQ](./faq.md)。 |
 | 动画或部分效果在别的软件里不对 | Microsoft PowerPoint 是动效行为的主要验证目标。Keynote / WPS / LibreOffice 可以打开 `.pptx`，但可能重新映射或省略个别效果或 Start 语义；动效关键交付应在 PowerPoint 中验证。 |

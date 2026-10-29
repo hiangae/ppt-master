@@ -27,7 +27,7 @@ Before starting the agent, keep these three directories separate:
 | **Working folder** | A persistent, writable folder that you open in the agent | For a full-repository clone or repository ZIP, normally the repository root; for skill-only installation, choose your own folder—it does not have to be the installed skill directory |
 | **Active project** | One generation run's sources, authored SVG, reports, backups, and exports | The agent initializes it under `<working-folder>/projects/<generated-project-name>/` and reports the exact path |
 
-Every installation path needs Python 3.10+ and an installed, authenticated agent host that can read and write the working folder and run shell commands. For a full-repository clone or repository ZIP, install dependencies from the repository root:
+Every installation path needs Python 3.10–3.14 and an installed, authenticated agent host that can read and write the working folder and run shell commands. For a full-repository clone or repository ZIP, install dependencies from the repository root:
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -188,7 +188,7 @@ The [FAQ](./faq.md) is the living troubleshooting reference — continuously upd
 | Situation | First thing to try |
 |---|---|
 | The AI drifts or forgets a step | Ask it to re-read `skills/ppt-master/SKILL.md`, `skills/ppt-master/workflows/routing.md`, and the selected route authority. |
-| Visual quality disappoints | Switch to a large-context Claude model + `gpt-image-2` — the harness sets the floor, the model sets the ceiling. |
+| Visual quality disappoints | Switch to a large-context Claude model + `gpt-image-2.5-sunburst` — the harness sets the floor, the model sets the ceiling. |
 | Text overflows or elements overlap | Re-run that page, or fix it in live preview; see the [FAQ](./faq.md). |
 | No image-generation API key | Use the host's native image tool when available; otherwise zero-config web search still works. See the [FAQ](./faq.md). |
 | Animations or some effects look off in another app | Microsoft PowerPoint is the primary motion-validation target. Keynote / WPS / LibreOffice can open the `.pptx`, but may remap or omit individual effects or Start semantics; validate motion-critical delivery in PowerPoint. |
