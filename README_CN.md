@@ -19,7 +19,7 @@
 
 ## ❤️ 赞助
 
-本项目由 <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>、<a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>、<a href="https://apikey.fan/register?aff=PPT-MASTER">APIKEY.FAN</a>、<a href="https://runapi.host/register?aff=WMLJ">RunAPI</a> 等赞助方支持，得以持续免费开源。
+本项目由 <a href="https://www.kimi.com/code/?aff=ppt-master">Kimi</a>、<a href="https://www.packyapi.ai/register?aff=ppt-master">PackyCode</a>、<a href="https://apikey.fan/register?aff=PPT-MASTER">APIKEY.FAN</a>、<a href="https://runapi.host/register?aff=WMLJ">RunAPI</a>、<a href="https://modelgo.ai/?utm_source=ppt-master&amp;utm_medium=sponsorship&amp;utm_content=readme01&amp;campaign_id=ppt-master-github&amp;ad_group_id=readme01">ModelGo</a> 等赞助方支持，得以持续免费开源。
 
 > **[想出现在这里？](SPONSORING_CN.md)**
 
@@ -48,6 +48,10 @@
   <tr>
     <td width="180"><a href="https://runapi.host/register?aff=WMLJ"><img src="docs/assets/sponsors/runapi.png" alt="RunAPI" width="150"></a></td>
     <td>感谢 RunAPI 赞助了本项目！RunAPI 是一个高效稳定的 API 平台，一个 API Key 即可访问 OpenAI、Claude、Gemini、DeepSeek、Grok 等 150+ 主流模型，价格低至官方原价的 <strong>1 折</strong>，极其稳定，可无缝兼容 Claude Code 等工具。RunAPI 为 PPT Master 用户提供专属福利：通过<a href="https://runapi.host/register?aff=WMLJ">本项目专属链接</a>注册并联系管理员，即可领取 <strong>￥7 的免费额度</strong>。</td>
+  </tr>
+  <tr>
+    <td width="180"><a href="https://modelgo.ai/?utm_source=ppt-master&amp;utm_medium=sponsorship&amp;utm_content=readme01&amp;campaign_id=ppt-master-github&amp;ad_group_id=readme01"><img src="docs/assets/sponsors/modelgo.svg" alt="ModelGo" width="150"></a></td>
+    <td>感谢 ModelGo 赞助了本项目！ModelGo 是一个稳定、高效的企业级 AI API 聚合平台，一个 API Key 即可调用 Claude、OpenAI、Gemini、DeepSeek 等主流 AI 模型，帮助开发者和企业以更低成本快速构建 AI 应用。ModelGo 为本项目用户提供专属福利：注册即送 $0.5 试用额度，完成首次 API 调用再送 $2，邀请新用户额外获得 $1 奖励！ 平台还提供阶梯式消费返佣机制，用得越多，返得越多，畅享 AI 模型调用。此外，ModelGo 支持 SLA 服务保障、可视化监控面板等企业级功能，保障 API 调用稳定可靠，满足生产环境部署需求。立即访问 <a href="https://modelgo.ai/?utm_source=ppt-master&amp;utm_medium=sponsorship&amp;utm_content=readme01&amp;campaign_id=ppt-master-github&amp;ad_group_id=readme01">ModelGo 官网</a> 注册体验，开启高效 AI 开发！</td>
   </tr>
 </table>
 
@@ -108,7 +112,9 @@
 > ### 这是一个工具，不是一个许愿池
 > `harness + model = agent`——PPT Master 只负责工作流，产出上限由模型决定。推荐 **Kimi K3（或 Claude）大上下文窗口（~100 万 token）+ AI 生图（`gpt-image-2.5-sunburst` 或 Google `gemini-nano-banana-2.1`）**；其他模型能跑通流程，但有质量差距。
 >
-> 也别指望一把就拿到完美成品。它的价值是帮你把大部分枯燥的活儿干掉，剩下的打磨交给你——做原生可编辑的 PPT，本就是为了让你接着改，而不是甩给你一张改不动的图。模型越便宜，要补的人工就越多；效果不理想，先升级模型，再对照[快速入门](./docs/zh/getting-started.md)和[示例工程](https://hugohe3.github.io/ppt-master-examples/)检查用法。
+> 也别指望一把就拿到完美成品。它的价值是帮你把大部分枯燥的活儿干掉，剩下的打磨交给你——做原生可编辑的 PPT，本就是为了让你接着改，而不是甩给你一张改不动的图。**廉价模型做不出推荐配置的效果，这是模型的差距，不是 PPT Master 的 bug。**模型越便宜，要补的人工就越多；效果不理想，先升级模型，再对照[快速入门](./docs/zh/getting-started.md)和[示例工程](https://hugohe3.github.io/ppt-master-examples/)检查用法。
+>
+> token 消耗高是这个方案的取舍，不是缺陷：工具本身免费开源，但模型的 token 费用由你自己承担；这个方案用更多的 token 换逐页设计的效果和原生可编辑性。想要不付出投入，却拿到极好的效果，这就是许愿，目前实现不了；如果这个取舍不适合你，其他技术路线的工具或手动制作都是合适的选择。
 
 ---
 
@@ -219,7 +225,7 @@ PPT Master 在**任何具备 agent 能力**（可读写文件、执行命令、�
 
 > **模型推荐**：追求最佳效果，语言模型选 **[Kimi K3](https://www.kimi.com/code/?aff=ppt-master)**（或 Claude）驱动流程，搭配 AI 生图 —— **`gpt-image-2.5-sunburst`**（OpenAI）或 **`gemini-nano-banana-2.1`**（Google）。本项目赞助商 Kimi Code 支持按量调用，很适合上手。
 
-**🔑 想用 Claude / GPT / Gemini 但还没有渠道？** 本项目赞助商 **[PackyCode](https://www.packyapi.ai/register?aff=ppt-master)**、**[APIKEY.FAN](https://apikey.fan/register?aff=PPT-MASTER)** 与 **[RunAPI](https://runapi.host/register?aff=WMLJ)** 均支持按量调用 Claude、GPT、Gemini 等主流模型，无需订阅、支持国内支付，并为本项目用户提供专属优惠（详情见页首）。
+**🔑 想用 Claude / GPT / Gemini 但还没有渠道？** 本项目赞助商 **[PackyCode](https://www.packyapi.ai/register?aff=ppt-master)**、**[APIKEY.FAN](https://apikey.fan/register?aff=PPT-MASTER)**、**[RunAPI](https://runapi.host/register?aff=WMLJ)** 与 **[ModelGo](https://modelgo.ai/?utm_source=ppt-master&utm_medium=sponsorship&utm_content=readme01&campaign_id=ppt-master-github&ad_group_id=readme01)** 均支持按量调用 Claude、GPT、Gemini 等主流模型，无需订阅、支持国内支付，并为本项目用户提供专属优惠（详情见页首）。
 
 **🔀 手上有多个渠道？** 拿到多家的 API Key 后，[cc-switch](https://github.com/farion1231/cc-switch)（跨平台桌面应用）可以一键切换 Claude Code、Codex、Gemini CLI 等工具的 API 供应商，免去手动改配置。
 
@@ -244,7 +250,7 @@ pip install -r requirements.txt
 **方式 B — 下载 ZIP**（无需安装 Git，适合快速体验）：
 [GitHub](https://github.com/hugohe3/ppt-master) → **Code → Download ZIP** · [AtomGit](https://atomgit.com/hugohe3/ppt-master) → **克隆/下载 → 下载ZIP**（中国大陆地区访问 GitHub 下载不便时用这个，网速更快）；解压后同样用 `pip install -r requirements.txt` 装依赖。ZIP 没有 Git 历史，不能自动 `git pull`（更新见下）。
 
-如果完整仓库下载失败、或嫌体积太大，可以改到 [Releases](https://github.com/hugohe3/ppt-master/releases) 页面下载纯技能包 `ppt-master-skill-*.zip`（约 56 MB，功能完整，但不含内置示例 deck）。
+如果完整仓库下载失败、或嫌体积太大，可以改到 [Releases](https://github.com/hugohe3/ppt-master/releases) 页面下载纯技能包 `ppt-master-skill-*.zip`（约 23 MB，功能完整，但不含内置示例 deck）。
 
 #### 日常更新
 
@@ -418,6 +424,8 @@ PPT Master 目前主要由我开发维护。每个新模板、Bug 修复、文�
 <a href="https://apikey.fan/register?aff=PPT-MASTER"><img src="docs/assets/sponsors/apikey-fan.png" alt="APIKEY.FAN" height="40" /></a>
 &nbsp;
 <a href="https://runapi.host/register?aff=WMLJ"><img src="docs/assets/sponsors/runapi.png" alt="RunAPI" height="40" /></a>
+&nbsp;
+<a href="https://modelgo.ai/?utm_source=ppt-master&amp;utm_medium=sponsorship&amp;utm_content=readme01&amp;campaign_id=ppt-master-github&amp;ad_group_id=readme01"><img src="docs/assets/sponsors/modelgo.svg" alt="ModelGo" height="40" /></a>
 &nbsp;
 <a href="https://m.do.co/c/547f129aabe1"><img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/PoweredByDO/DO_Powered_by_Badge_blue.svg" alt="Powered by DigitalOcean" height="40" /></a>
 
